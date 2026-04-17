@@ -28,9 +28,15 @@ target_sources(EasyEffects
     PRIVATE
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
+    src/dsp/EffectChain.cpp
     src/dsp/GainModule.cpp
     src/dsp/CompressorModule.cpp
-    src/dsp/EffectChain.cpp
+    src/dsp/GateModule.cpp
+    src/dsp/EqualizerModule.cpp
+    src/dsp/LimiterModule.cpp
+    src/dsp/FilterModule.cpp
+    src/dsp/DelayModule.cpp
+    src/dsp/ReverbModule.cpp
 )
 
 # Link JUCE modules

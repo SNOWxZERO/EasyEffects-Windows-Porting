@@ -2,6 +2,12 @@
 #include "PluginEditor.h"
 #include "dsp/GainModule.h"
 #include "dsp/CompressorModule.h"
+#include "dsp/GateModule.h"
+#include "dsp/EqualizerModule.h"
+#include "dsp/LimiterModule.h"
+#include "dsp/FilterModule.h"
+#include "dsp/DelayModule.h"
+#include "dsp/ReverbModule.h"
 
 EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -12,8 +18,14 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
       parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
-    // Fixed chain order: Compressor → Gain (more modules added in Phase 3B)
+    // Fixed chain order per plan: Gate → EQ → Compressor → Limiter → Filter → Delay → Reverb → Gain
+    dspChain.addModule(std::make_unique<eeval::GateModule>());
+    dspChain.addModule(std::make_unique<eeval::EqualizerModule>());
     dspChain.addModule(std::make_unique<eeval::CompressorModule>());
+    dspChain.addModule(std::make_unique<eeval::LimiterModule>());
+    dspChain.addModule(std::make_unique<eeval::FilterModule>());
+    dspChain.addModule(std::make_unique<eeval::DelayModule>());
+    dspChain.addModule(std::make_unique<eeval::ReverbModule>());
     dspChain.addModule(std::make_unique<eeval::GainModule>());
 }
 
@@ -38,6 +50,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
             juce::ParameterID(id, 1), name, defaultVal));
     };
 
+    auto addChoice = [&](const std::string& id, const juce::String& name, const juce::StringArray& choices, int defaultIndex) {
+        layout.add(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID(id, 1), name, choices, defaultIndex));
+    };
+
+    // === Gate ===
+    addFloat("gate.threshold", "Gate Threshold", -60.0f, 0.0f, 0.1f, -40.0f);
+    addFloat("gate.ratio", "Gate Ratio", 1.0f, 20.0f, 0.1f, 10.0f);
+    addFloat("gate.attack", "Gate Attack (ms)", 0.1f, 100.0f, 0.1f, 1.0f);
+    addFloat("gate.release", "Gate Release (ms)", 1.0f, 1000.0f, 1.0f, 100.0f);
+    addFloat("gate.mix", "Gate Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("gate.bypass", "Gate Bypass", false);
+
+    // === Equalizer ===
+    for (int i = 0; i < eeval::EqualizerModule::NUM_BANDS; ++i) {
+        std::string p = "eq.band" + std::to_string(i);
+        addFloat(p + ".gain", juce::String("EQ Band ") + juce::String(i + 1) + " Gain", -24.0f, 24.0f, 0.1f, 0.0f);
+        
+        // Defaults: 100Hz (Low Shelf), 1000Hz (Mid1), 4000Hz (Mid2), 10000Hz (High Shelf)
+        float freqDef = (i == 0) ? 100.0f : (i == 1) ? 1000.0f : (i == 2) ? 4000.0f : 10000.0f;
+        addFloat(p + ".freq", juce::String("EQ Band ") + juce::String(i + 1) + " Freq", 20.0f, 20000.0f, 1.0f, freqDef);
+        addFloat(p + ".q", juce::String("EQ Band ") + juce::String(i + 1) + " Q", 0.1f, 10.0f, 0.05f, 0.707f);
+    }
+    addFloat("eq.mix", "EQ Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("eq.bypass", "EQ Bypass", false);
+
     // === Compressor ===
     addFloat("compressor.threshold", "Compressor Threshold", -60.0f, 0.0f, 0.1f, -10.0f);
     addFloat("compressor.ratio", "Compressor Ratio", 1.0f, 100.0f, 0.1f, 3.0f);
@@ -45,6 +83,35 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
     addFloat("compressor.release", "Compressor Release (ms)", 1.0f, 1000.0f, 1.0f, 100.0f);
     addFloat("compressor.mix", "Compressor Mix", 0.0f, 100.0f, 1.0f, 100.0f);
     addBool("compressor.bypass", "Compressor Bypass", false);
+    
+    // === Limiter ===
+    addFloat("limiter.threshold", "Limiter Threshold", -60.0f, 0.0f, 0.1f, -1.0f);
+    addFloat("limiter.release", "Limiter Release (ms)", 1.0f, 1000.0f, 1.0f, 100.0f);
+    addFloat("limiter.mix", "Limiter Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("limiter.bypass", "Limiter Bypass", false);
+
+    // === Filter ===
+    addChoice("filter.type", "Filter Type", juce::StringArray{"Highpass", "Lowpass"}, 0);
+    addFloat("filter.cutoff", "Filter Cutoff (Hz)", 20.0f, 20000.0f, 1.0f, 100.0f);
+    addFloat("filter.resonance", "Filter Resonance", 0.1f, 10.0f, 0.05f, 0.707f);
+    addFloat("filter.mix", "Filter Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("filter.bypass", "Filter Bypass", false);
+
+    // === Delay ===
+    addFloat("delay.time_ms", "Delay Time (ms)", 0.0f, 2000.0f, 1.0f, 200.0f);
+    addFloat("delay.feedback", "Delay Feedback %", 0.0f, 100.0f, 1.0f, 30.0f);
+    addFloat("delay.delay_mix", "Internal Delay Mix %", 0.0f, 100.0f, 1.0f, 50.0f);
+    addFloat("delay.mix", "Delay Module Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("delay.bypass", "Delay Bypass", false);
+
+    // === Reverb ===
+    addFloat("reverb.room_size", "Reverb Room Size", 0.0f, 1.0f, 0.01f, 0.5f);
+    addFloat("reverb.damping", "Reverb Damping", 0.0f, 1.0f, 0.01f, 0.5f);
+    addFloat("reverb.wet", "Reverb Wet Level", 0.0f, 1.0f, 0.01f, 0.33f);
+    addFloat("reverb.dry", "Reverb Dry Level", 0.0f, 1.0f, 0.01f, 0.4f);
+    addFloat("reverb.width", "Reverb Width", 0.0f, 1.0f, 0.01f, 1.0f);
+    addFloat("reverb.mix", "Reverb Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("reverb.bypass", "Reverb Bypass", false);
 
     // === Gain ===
     addFloat("gain.level", "Output Gain", -24.0f, 24.0f, 0.1f, 0.0f);
