@@ -9,6 +9,8 @@ public:
     ~EasyEffectsAudioProcessor() override;
 
     void prepareToPlay(double sampleRate, int samplesPerBlock) override;
+    juce::AudioProcessorValueTreeState parameters;
+
     void releaseResources() override;
     bool isBusesLayoutSupported(const BusesLayout& layouts) const override;
     void processBlock(juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
@@ -33,5 +35,9 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
+    juce::dsp::Gain<float> gainNode;
+    
+    static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EasyEffectsAudioProcessor)
 };

@@ -4,6 +4,13 @@
 EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
+    gainSlider.setSliderStyle(juce::Slider::LinearVertical);
+    gainSlider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 50, 20);
+    gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+        audioProcessor.parameters, "gain", gainSlider);
+        
+    addAndMakeVisible(gainSlider);
+    
     setSize(800, 600);
 }
 
@@ -23,4 +30,7 @@ void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
 
 void EasyEffectsAudioProcessorEditor::resized()
 {
+    // Place the slider in the center of the window
+    auto area = getLocalBounds();
+    gainSlider.setBounds(area.removeFromBottom(200).withSizeKeepingCentre(100, 150));
 }

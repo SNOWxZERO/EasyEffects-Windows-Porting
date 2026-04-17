@@ -6,13 +6,28 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
     : AudioProcessor(BusesProperties()
                      .withInput("Input", juce::AudioChannelSet::stereo(), true)
                      .withOutput("Output", juce::AudioChannelSet::stereo(), true)
-                     )
+                     ),
+      parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
 }
 
 EasyEffectsAudioProcessor::~EasyEffectsAudioProcessor()
 {
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::createParameterLayout()
+{
+    juce::AudioProcessorValueTreeState::ParameterLayout layout;
+    
+    // Add a simple gain parameter for Phase 1/2 (-24dB to 24dB, default 0dB)
+    layout.add(std::make_unique<juce::AudioParameterFloat>(
+        juce::ParameterID("gain", 1), 
+        "Output Gain", 
+        juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f, 1.0f), 
+        0.0f));
+
+    return layout;
 }
 
 const juce::String EasyEffectsAudioProcessor::getName() const
@@ -65,7 +80,14 @@ void EasyEffectsAudioProcessor::changeProgramName(int index, const juce::String&
 
 void EasyEffectsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // Phase 1 / Phase 2: We will setup DSP processing here
+    // Phase 1 / Phase 2: Setup DSP processing here
+    juce::dsp::ProcessSpec spec;
+    spec.maximumBlockSize = samplesPerBlock;
+    spec.sampleRate = sampleRate;
+    spec.numChannels = getTotalNumOutputChannels();
+    
+    gainNode.prepare(spec);
+    gainNode.setRampDurationSeconds(0.05); // 50ms ramp to avoid clicks
 }
 
 void EasyEffectsAudioProcessor::releaseResources()
@@ -95,6 +117,7 @@ bool EasyEffectsAudioProcessor::isBusesLayoutSupported(const BusesLayout& layout
 
 void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midiMessages)
 {
+    juce::ignoreUnused(midiMessages);
     juce::ScopedNoDenormals noDenormals;
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
@@ -102,7 +125,15 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear(i, 0, buffer.getNumSamples());
         
-    // In Phase 1, this currently acts as a clean audio passthrough!
+    // Update parameter values
+    auto gainParam = parameters.getRawParameterValue("gain");
+    if (gainParam != nullptr)
+        gainNode.setGainDecibels(gainParam->load());
+
+    // Execute DSP
+    juce::dsp::AudioBlock<float> block(buffer);
+    juce::dsp::ProcessContextReplacing<float> context(block);
+    gainNode.process(context);
 }
 
 bool EasyEffectsAudioProcessor::hasEditor() const
