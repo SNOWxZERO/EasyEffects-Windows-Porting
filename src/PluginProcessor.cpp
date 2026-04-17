@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "dsp/GainModule.h"
 
 EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -10,6 +11,7 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
       parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
+    dspChain.addModule(std::make_unique<eeval::GainModule>());
 }
 
 EasyEffectsAudioProcessor::~EasyEffectsAudioProcessor()
@@ -80,14 +82,12 @@ void EasyEffectsAudioProcessor::changeProgramName(int index, const juce::String&
 
 void EasyEffectsAudioProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
 {
-    // Phase 1 / Phase 2: Setup DSP processing here
     juce::dsp::ProcessSpec spec;
     spec.maximumBlockSize = samplesPerBlock;
     spec.sampleRate = sampleRate;
     spec.numChannels = getTotalNumOutputChannels();
     
-    gainNode.prepare(spec);
-    gainNode.setRampDurationSeconds(0.05); // 50ms ramp to avoid clicks
+    dspChain.prepare(spec);
 }
 
 void EasyEffectsAudioProcessor::releaseResources()
@@ -126,14 +126,12 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
         buffer.clear(i, 0, buffer.getNumSamples());
         
     // Update parameter values
-    auto gainParam = parameters.getRawParameterValue("gain");
-    if (gainParam != nullptr)
-        gainNode.setGainDecibels(gainParam->load());
+    dspChain.updateParameters(parameters);
 
     // Execute DSP
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
-    gainNode.process(context);
+    dspChain.process(context);
 }
 
 bool EasyEffectsAudioProcessor::hasEditor() const

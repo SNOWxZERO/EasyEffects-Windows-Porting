@@ -1,6 +1,7 @@
 #pragma once
 
 #include <JuceHeader.h>
+#include "dsp/EffectChain.h"
 
 class EasyEffectsAudioProcessor : public juce::AudioProcessor
 {
@@ -35,7 +36,7 @@ public:
     void setStateInformation(const void* data, int sizeInBytes) override;
 
 private:
-    juce::dsp::Gain<float> gainNode;
+    eeval::EffectChain dspChain;
     
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

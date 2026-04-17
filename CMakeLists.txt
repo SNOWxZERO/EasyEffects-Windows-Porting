@@ -28,6 +28,8 @@ target_sources(EasyEffects
     PRIVATE
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
+    src/dsp/GainModule.cpp
+    src/dsp/EffectChain.cpp
 )
 
 # Link JUCE modules
