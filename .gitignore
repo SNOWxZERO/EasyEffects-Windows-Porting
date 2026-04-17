@@ -1,0 +1,13 @@
+# CMake build artifacts
+build/
+.cache/
+compile_commands.json
+
+# Visual Studio files
+.vs/
+*.sln
+*.suo
+
+# macOS / Windows OS files
+.DS_Store
+Thumbs.db
