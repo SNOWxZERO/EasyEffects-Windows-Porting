@@ -21,6 +21,8 @@ public:
     void addModule(std::unique_ptr<EffectModule> module);
     void clearModules();
 
+    std::vector<std::string> getModuleNames() const;
+
 private:
     std::vector<std::unique_ptr<EffectModule>> modules;
 };

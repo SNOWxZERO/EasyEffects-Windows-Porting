@@ -3,18 +3,33 @@
 #include <JuceHeader.h>
 #include "PluginProcessor.h"
 
-class EasyEffectsAudioProcessorEditor : public juce::AudioProcessorEditor
+class EasyEffectsAudioProcessorEditor  : public juce::AudioProcessorEditor,
+                                       public juce::ListBoxModel
 {
 public:
-    EasyEffectsAudioProcessorEditor(EasyEffectsAudioProcessor&);
+    EasyEffectsAudioProcessorEditor (EasyEffectsAudioProcessor&);
     ~EasyEffectsAudioProcessorEditor() override;
 
-    void paint(juce::Graphics&) override;
+    void paint (juce::Graphics&) override;
     void resized() override;
+    
+    // ListBoxModel implementation
+    int getNumRows() override;
+    void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+    void listBoxItemClicked(int row, const juce::MouseEvent&) override;
+    
+    void updateEditorView(int row);
 
 private:
     EasyEffectsAudioProcessor& audioProcessor;
     
+    juce::ListBox sidebarList;
+    std::vector<std::string> loadedModules;
+    
+    // Groups for switching UI views
+    juce::Component gainEditorArea;
+    juce::Component compEditorArea;
+
     juce::Slider gainSlider;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 

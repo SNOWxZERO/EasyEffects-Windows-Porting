@@ -37,4 +37,12 @@ void EffectChain::clearModules() {
     modules.clear();
 }
 
+std::vector<std::string> EffectChain::getModuleNames() const {
+    std::vector<std::string> names;
+    for (const auto& mod : modules) {
+        names.push_back(mod->getName());
+    }
+    return names;
+}
+
 } // namespace eeval

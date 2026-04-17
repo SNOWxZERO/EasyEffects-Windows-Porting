@@ -28,3 +28,11 @@
 * Implemented `eeval::EffectChain` which internally manages an ordered vector of effect modules.
 * Replaced the hardcoded Gain hook in the audio processor with the dynamic `EffectChain`.
 * Compiled successfully without performance regressions.
+
+## Phase 3 Extended: Complex Modules
+* Ported user-request to ensure the modular chain could handle complex parameter sets.
+* Added `eeval::CompressorModule` leveraging `juce::dsp::Compressor`.
+* Mapped `comp_threshold`, `comp_ratio`, `comp_attack`, `comp_release` to the APVTS.
+* Re-arranged the UI in `PluginEditor.cpp` to place compressor knobs at the top.
+* Inserted `CompressorModule` upstream of `GainModule` inside the `EffectChain`.
+* Compiled successfully.

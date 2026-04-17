@@ -152,12 +152,28 @@ juce::AudioProcessorEditor* EasyEffectsAudioProcessor::createEditor()
 
 void EasyEffectsAudioProcessor::getStateInformation(juce::MemoryBlock& destData)
 {
-    // Phase 5 Preset Saving logic goes here
+    // Serialize APVTS to XML array
+    auto state = parameters.copyState();
+    
+    // Future-Proofing: We can add module chain order here as child properties
+    // e.g. state.setProperty("CHAIN_ORDER", "Compressor,Gain", nullptr);
+
+    std::unique_ptr<juce::XmlElement> xml(state.createXml());
+    if (xml != nullptr)
+        copyXmlToBinary(*xml, destData);
 }
 
 void EasyEffectsAudioProcessor::setStateInformation(const void* data, int sizeInBytes)
 {
-    // Phase 5 Preset Loading logic goes here
+    // Try to load XML array into APVTS
+    std::unique_ptr<juce::XmlElement> xmlState(getXmlFromBinary(data, sizeInBytes));
+    if (xmlState != nullptr) {
+        if (xmlState->hasTagName(parameters.state.getType())) {
+            parameters.replaceState(juce::ValueTree::fromXml(*xmlState));
+            // Trigger parameter updates manually for the DSP chain right away
+            dspChain.updateParameters(parameters);
+        }
+    }
 }
 
 // This creates new instances of the plugin..

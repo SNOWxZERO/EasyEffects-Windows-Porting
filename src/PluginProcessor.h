@@ -26,6 +26,11 @@ public:
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
+    // Phase 5: Editor State & UI Synchronization
+    int getSelectedEditorIndex() const { return selectedEditorIndex; }
+    void setSelectedEditorIndex(int index) { selectedEditorIndex = index; }
+    std::vector<std::string> getActiveEffectNames() const { return dspChain.getModuleNames(); }
+
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram(int index) override;
@@ -37,6 +42,7 @@ public:
 
 private:
     eeval::EffectChain dspChain;
+    int selectedEditorIndex = 0; // Centralized UI state
     
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
