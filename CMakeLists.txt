@@ -29,6 +29,7 @@ target_sources(EasyEffects
     src/PluginProcessor.cpp
     src/PluginEditor.cpp
     src/dsp/GainModule.cpp
+    src/dsp/CompressorModule.cpp
     src/dsp/EffectChain.cpp
 )
 

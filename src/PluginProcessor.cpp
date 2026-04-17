@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 #include "dsp/GainModule.h"
+#include "dsp/CompressorModule.h"
 
 EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -11,7 +12,8 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
       parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
-    dspChain.addModule(std::make_unique<eeval::GainModule>());
+    dspChain.addModule(std::make_unique<eeval::CompressorModule>()); // Add comp first
+    dspChain.addModule(std::make_unique<eeval::GainModule>()); // Then gain
 }
 
 EasyEffectsAudioProcessor::~EasyEffectsAudioProcessor()
@@ -22,12 +24,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
-    // Add a simple gain parameter for Phase 1/2 (-24dB to 24dB, default 0dB)
+    // Gain
     layout.add(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("gain", 1), 
-        "Output Gain", 
-        juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f, 1.0f), 
-        0.0f));
+        juce::ParameterID("gain", 1), "Output Gain", 
+        juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f, 1.0f), 0.0f));
+
+    // Compressor
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_threshold", 1), "Comp Threshold", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f, 1.0f), -10.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_ratio", 1), "Comp Ratio", juce::NormalisableRange<float>(1.0f, 100.0f, 0.1f, 1.0f), 3.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_attack", 1), "Comp Attack (ms)", juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f, 1.0f), 2.0f));
+    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_release", 1), "Comp Release (ms)", juce::NormalisableRange<float>(1.0f, 1000.0f, 1.0f, 1.0f), 100.0f));
 
     return layout;
 }

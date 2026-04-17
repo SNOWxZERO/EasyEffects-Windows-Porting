@@ -21,3 +21,10 @@
 * Added `juce::Slider` in the UI thread mapped to the APVTS parameter layout.
 * Linked `juce::dsp::Gain` processor into the `processBlock` and parameterized via the APVTS tree.
 * Compiled successfully.
+
+## Phase 3: Modular DSP System
+* Abstracted the DSP code into an `eeval::EffectModule` base interface (`prepare`, `process`, `reset`, `updateParameters`).
+* Implemented `eeval::GainModule` as the first polymorphic effect block.
+* Implemented `eeval::EffectChain` which internally manages an ordered vector of effect modules.
+* Replaced the hardcoded Gain hook in the audio processor with the dynamic `EffectChain`.
+* Compiled successfully without performance regressions.
