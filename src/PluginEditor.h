@@ -19,12 +19,21 @@ public:
     void listBoxItemClicked(int row, const juce::MouseEvent&) override;
     
     void updateEditorView(int row);
+    void savePreset();
+    void loadPreset();
+    void autoSaveState();
+    void autoLoadState();
+    juce::File getAutoSaveFile() const;
 
 private:
     EasyEffectsAudioProcessor& audioProcessor;
     
     juce::ListBox sidebarList;
     std::vector<std::string> loadedModules;
+    
+    // Top bar buttons
+    juce::TextButton savePresetButton { "Save Preset" };
+    juce::TextButton loadPresetButton { "Load Preset" };
     
     // Groups for switching UI views
     juce::Component gainEditorArea;
