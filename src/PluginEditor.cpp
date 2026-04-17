@@ -52,13 +52,15 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     viewport.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport);
 
-    // Restore previously open module
     int lastSelected = audioProcessor.getSelectedEditorIndex();
     if (lastSelected >= 0 && lastSelected < (int)displayNames.size()) {
         moduleList.selectRow(lastSelected, false, true);
     } else {
         moduleList.selectRow(0, false, true);
     }
+    
+    // Explicitly build the view because selectRow does not trigger listBoxItemClicked natively
+    rebuildEditorView();
 }
 
 EasyEffectsAudioProcessorEditor::~EasyEffectsAudioProcessorEditor()

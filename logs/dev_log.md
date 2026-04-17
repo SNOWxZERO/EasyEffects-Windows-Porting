@@ -44,16 +44,16 @@
 * Refactored `EffectModule` to internalize dry/wet Mix and Bypass logic completely, hiding it from subclasses.
 * Subclasses now only implement `processInternal()`, enforcing real-time safety.
 * Enforced `<module>.<param>` naming standard for APVTS mappings.
-* Implemented `GateModule` using `juce::dsp::NoiseGate`.
-* Implemented `EqualizerModule` utilizing scalable `std::vector` of `juce::dsp::IIR::Filter`. Defaulted to 4 pre-allocated bands.
-* Implemented `LimiterModule` using `juce::dsp::Limiter` (Moved to end of the chain).
-* Implemented `FilterModule` using duplicated stereo `juce::dsp::IIR::Filter` (HP/LP toggleable).
-* Implemented `DelayModule` using `juce::dsp::DelayLine` (pre-allocated 2000ms max buffer).
-* Implemented `ReverbModule` using `juce::dsp::Reverb`.
-* Implemented `ExciterModule` using `juce::dsp::LinkwitzRileyFilter` and `juce::dsp::WaveShaper` in a parallel high-frequency band.
-* Implemented `BassEnhancerModule` using the same paradigm on the low-frequency band.
-* Implemented `DeesserModule` by isolating the high-frequency band via `LinkwitzRileyFilter` and compressing it independently before summing.
-* Implemented `ConvolverModule` using `juce::dsp::Convolution` with a safe pass-through if no `.wav` IR file is loaded.
-* Implemented `LevelMeterModule` with lock-free atomics and exponential smoothing curves for the future UI.
-* Fixed chain execution order is now precisely: `Gate → EQ → Deesser → Exciter → BassEnhancer → Compressor → Filter → Convolver → Delay → Reverb → Limiter → LevelMeter → Gain`.
-* Compiled successfully!
+* Implemented `GateModule`, `EqualizerModule`, `LimiterModule`, `FilterModule`, `DelayModule`, `ReverbModule`.
+* Implemented `ExciterModule`, `BassEnhancerModule`, `DeesserModule` with `LinkwitzRileyFilter` routing.
+* Implemented `ConvolverModule`.
+* Implemented `LevelMeterModule` with lock-free atomics and exponential smoothing curves.
+* Fixed chain execution order established.
+
+## Phase 4B: Full Custom UI Creation
+* **Theme System:** Developed `Theme.h` passing a Catppuccin-esque modern dark layout into `juce::LookAndFeel_V4` globally. Replaces old default grey knobs with neon-blue active flat rotary dials and sleek layouts.
+* **Module Descriptors:** Replaced ugly string prefix scanning with a hardcoded struct (`ModuleDescriptors.h`) supplying Label, Unit, and Parameter IDs safely.
+* **Dynamic Content Engine:** Developed `GenericModuleEditor.h` which accepts a DSP module ID, calls the descriptor, and spawns, binds, and places sliders automatically into a dynamic row-based responsive grid layout. 
+* **Lifecycle State Validation:** Fixed `juce::SliderAttachment` memory leaks by wrapping the arrays directly in `juce::OwnedArray` tied to the lifecycle of the GenericModuleEditor.
+* **LevelMeter Custom UI:** Developed specialized `LevelMeterEditor.h` drawing accurate graphical volume bars running via an asynchronous decoupled `juce::Timer` pulling the lock-free atomics at 30Hz natively.
+* **PluginEditor Core Refactor:** Re-skinned the core shell, adding deep dark colors, proper Header spacing, async `FileChooser` operations for preset management, and a `juce::Viewport` wrapper explicitly preventing components from overflowing the fixed screen layout.
