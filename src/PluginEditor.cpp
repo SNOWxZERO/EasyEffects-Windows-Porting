@@ -4,42 +4,140 @@
 EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
+    // Apply global modern theme
+    setLookAndFeel(&customTheme);
+    
     setSize(900, 600);
+
+    displayNames = audioProcessor.getActiveEffectNames();
+    moduleIds = audioProcessor.getActiveEffectIds();
+
+    // Setup Header
+    addAndMakeVisible(savePresetBtn);
+    addAndMakeVisible(loadPresetBtn);
+    
+    savePresetBtn.onClick = [this] {
+        auto chooser = std::make_shared<juce::FileChooser>("Save Preset", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*.xml");
+        chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
+            [this, chooser](const juce::FileChooser& fc) {
+                if (fc.getResults().isEmpty()) return;
+                auto file = fc.getResult();
+                juce::MemoryBlock destData;
+                audioProcessor.getStateInformation(destData);
+                file.replaceWithData(destData.getData(), destData.getSize());
+            });
+    };
+    
+    loadPresetBtn.onClick = [this] {
+        auto chooser = std::make_shared<juce::FileChooser>("Load Preset", juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*.xml");
+        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
+            [this, chooser](const juce::FileChooser& fc) {
+                if (fc.getResults().isEmpty()) return;
+                auto file = fc.getResult();
+                juce::MemoryBlock destData;
+                file.loadFileAsData(destData);
+                audioProcessor.setStateInformation(destData.getData(), (int)destData.getSize());
+                
+                // Restore UI state
+                moduleList.selectRow(audioProcessor.getSelectedEditorIndex(), true, true);
+            });
+    };
+
+    // Setup Sidebar
+    moduleList.setModel(this);
+    moduleList.setRowHeight(40);
+    addAndMakeVisible(moduleList);
+
+    // Setup Viewport for main content
+    viewport.setScrollBarsShown(true, false);
+    addAndMakeVisible(viewport);
+
+    // Restore previously open module
+    int lastSelected = audioProcessor.getSelectedEditorIndex();
+    if (lastSelected >= 0 && lastSelected < (int)displayNames.size()) {
+        moduleList.selectRow(lastSelected, false, true);
+    } else {
+        moduleList.selectRow(0, false, true);
+    }
 }
 
 EasyEffectsAudioProcessorEditor::~EasyEffectsAudioProcessorEditor()
 {
+    // Always tear down UI state properly
+    currentEditor.reset();
+    moduleList.setModel(nullptr);
+    setLookAndFeel(nullptr);
 }
 
 void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xFF1E1E2E)); // Dark background
+    g.fillAll(eeval::theme::bgBase);
     
-    g.setColour(juce::Colours::white);
-    g.setFont(24.0f);
-    g.drawFittedText("EasyEffects Windows — DSP Engine (Phase 3B)", 
-                     getLocalBounds().removeFromTop(50), juce::Justification::centred, 1);
-
-    g.setFont(14.0f);
-    g.setColour(juce::Colour(0xFFCDD6F4));
+    // Draw header background
+    g.setColour(eeval::theme::bgSurface);
+    g.fillRect(0, 0, getWidth(), 60);
     
-    auto area = getLocalBounds().reduced(20).withTrimmedTop(60);
-    
-    auto moduleNames = audioProcessor.getActiveEffectNames();
-    g.drawText("Active DSP Chain:", area.removeFromTop(25), juce::Justification::left);
-    
-    for (int i = 0; i < (int)moduleNames.size(); ++i) {
-        g.drawText(juce::String(i + 1) + ". " + moduleNames[i], 
-                   area.removeFromTop(22).withTrimmedLeft(20), juce::Justification::left);
-    }
-    
-    area.removeFromTop(20);
-    g.drawText("UI will be rebuilt in Phase 4B after all DSP modules are stable.",
-               area.removeFromTop(25), juce::Justification::left);
-    g.drawText("Use Options > Audio Settings to configure I/O devices.",
-               area.removeFromTop(25), juce::Justification::left);
+    // Draw logo/branding
+    g.setColour(eeval::theme::accentPrimary);
+    g.setFont(juce::Font(24.0f, juce::Font::bold));
+    g.drawText("EasyEffects Windows", 20, 0, 300, 60, juce::Justification::centredLeft);
 }
 
 void EasyEffectsAudioProcessorEditor::resized()
 {
+    auto area = getLocalBounds();
+    
+    // Header
+    auto header = area.removeFromTop(60);
+    loadPresetBtn.setBounds(header.removeFromRight(120).reduced(10));
+    savePresetBtn.setBounds(header.removeFromRight(120).reduced(10));
+    
+    // Sidebar
+    moduleList.setBounds(area.removeFromLeft(200));
+    
+    // Main Content
+    viewport.setBounds(area);
+    if (currentEditor != nullptr) {
+        currentEditor->setSize(area.getWidth() - 20, 800); // Fixed high height to allow scroll
+    }
+}
+
+// ListBoxModel Overrides
+int EasyEffectsAudioProcessorEditor::getNumRows() {
+    return (int)displayNames.size();
+}
+
+void EasyEffectsAudioProcessorEditor::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) {
+    if (rowIsSelected) {
+        g.fillAll(eeval::theme::bgOverlay);
+    }
+    
+    g.setColour(rowIsSelected ? eeval::theme::textPrimary : eeval::theme::textSecondary);
+    g.setFont(16.0f);
+    g.drawText(displayNames[(size_t)rowNumber], 20, 0, width - 20, height, juce::Justification::centredLeft, true);
+}
+
+void EasyEffectsAudioProcessorEditor::listBoxItemClicked(int row, const juce::MouseEvent&) {
+    audioProcessor.setSelectedEditorIndex(row);
+    rebuildEditorView();
+}
+
+void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
+    int index = audioProcessor.getSelectedEditorIndex();
+    if (index < 0 || index >= (int)moduleIds.size()) return;
+    
+    std::string modId = moduleIds[index];
+    std::string modName = displayNames[index];
+    
+    // Hot-swap the editor component safely
+    viewport.setViewedComponent(nullptr, false);
+    
+    if (modId == "meter") {
+        currentEditor = std::make_unique<eeval::ui::LevelMeterEditor>(audioProcessor.getLevelMeter());
+    } else {
+        currentEditor = std::make_unique<eeval::ui::GenericModuleEditor>(audioProcessor.parameters, modId, modName);
+    }
+    
+    viewport.setViewedComponent(currentEditor.get(), false);
+    resized(); // Recalculate layout sizes
 }

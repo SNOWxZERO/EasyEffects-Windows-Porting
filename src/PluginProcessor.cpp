@@ -35,7 +35,11 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
     dspChain.addModule(std::make_unique<eeval::DelayModule>());
     dspChain.addModule(std::make_unique<eeval::ReverbModule>());
     dspChain.addModule(std::make_unique<eeval::LimiterModule>());
-    dspChain.addModule(std::make_unique<eeval::LevelMeterModule>());
+    
+    auto meterNode = std::make_unique<eeval::LevelMeterModule>();
+    levelMeterPtr = meterNode.get();
+    dspChain.addModule(std::move(meterNode));
+    
     dspChain.addModule(std::make_unique<eeval::GainModule>());
 }
 
@@ -259,6 +263,11 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 bool EasyEffectsAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
+}
+
+eeval::LevelMeterModule* EasyEffectsAudioProcessor::getLevelMeter()
+{
+    return levelMeterPtr;
 }
 
 juce::AudioProcessorEditor* EasyEffectsAudioProcessor::createEditor()

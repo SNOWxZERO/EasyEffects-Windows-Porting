@@ -3,6 +3,8 @@
 #include <JuceHeader.h>
 #include "dsp/EffectChain.h"
 
+namespace eeval { class LevelMeterModule; }
+
 class EasyEffectsAudioProcessor : public juce::AudioProcessor
 {
 public:
@@ -30,6 +32,10 @@ public:
     int getSelectedEditorIndex() const { return selectedEditorIndex; }
     void setSelectedEditorIndex(int index) { selectedEditorIndex = index; }
     std::vector<std::string> getActiveEffectNames() const { return dspChain.getModuleNames(); }
+    std::vector<std::string> getActiveEffectIds() const { return dspChain.getModuleIds(); }
+    
+    // For LevelMeter UI polling
+    eeval::LevelMeterModule* getLevelMeter();
 
     int getNumPrograms() override;
     int getCurrentProgram() override;
@@ -42,6 +48,7 @@ public:
 
 private:
     eeval::EffectChain dspChain;
+    eeval::LevelMeterModule* levelMeterPtr = nullptr;
     int selectedEditorIndex = 0; // Centralized UI state
     
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

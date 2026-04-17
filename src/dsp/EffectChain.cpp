@@ -45,4 +45,12 @@ std::vector<std::string> EffectChain::getModuleNames() const {
     return names;
 }
 
+std::vector<std::string> EffectChain::getModuleIds() const {
+    std::vector<std::string> ids;
+    for (const auto& mod : modules) {
+        ids.push_back(mod->getModuleId());
+    }
+    return ids;
+}
+
 } // namespace eeval
