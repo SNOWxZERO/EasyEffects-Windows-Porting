@@ -13,7 +13,7 @@ public:
     ~EffectChain() = default;
 
     void prepare(const juce::dsp::ProcessSpec& spec);
-    void process(const juce::dsp::ProcessContextReplacing<float>& context);
+    void process(juce::AudioBuffer<float>& buffer);
     void reset();
 
     void updateParameters(juce::AudioProcessorValueTreeState& apvts);

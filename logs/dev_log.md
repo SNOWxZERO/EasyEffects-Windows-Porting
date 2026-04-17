@@ -36,3 +36,15 @@
 * Re-arranged the UI in `PluginEditor.cpp` to place compressor knobs at the top.
 * Inserted `CompressorModule` upstream of `GainModule` inside the `EffectChain`.
 * Compiled successfully.
+
+## Phase 4 & 5: UI Overhaul and Preset System
+* Restructured the PluginEditor from a flat slider dump into a sidebar-navigated layout.
+* Implemented `juce::ListBoxModel` for a sidebar listing all loaded DSP modules dynamically.
+* Added swappable editor views — clicking "Compressor" in sidebar shows compressor knobs, "Gain" shows gain slider.
+* Centralized UI state via `selectedEditorIndex` stored in the AudioProcessor (survives editor recreation).
+* Implemented `getStateInformation` / `setStateInformation` for full APVTS XML serialization.
+* Added "Save Preset" and "Load Preset" buttons in the top bar using async `juce::FileChooser`.
+* Presets store full APVTS state + `selectedEditorIndex` for future module chain metadata.
+* Added auto-save on exit: `~Editor()` writes to `%APPDATA%/EasyEffectsWindows/autosave.xml`.
+* Added auto-load on startup: constructor reads `autosave.xml` if present and restores full state.
+* Compiled successfully.

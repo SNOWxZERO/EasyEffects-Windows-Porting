@@ -12,8 +12,9 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
       parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
-    dspChain.addModule(std::make_unique<eeval::CompressorModule>()); // Add comp first
-    dspChain.addModule(std::make_unique<eeval::GainModule>()); // Then gain
+    // Fixed chain order: Compressor → Gain (more modules added in Phase 3B)
+    dspChain.addModule(std::make_unique<eeval::CompressorModule>());
+    dspChain.addModule(std::make_unique<eeval::GainModule>());
 }
 
 EasyEffectsAudioProcessor::~EasyEffectsAudioProcessor()
@@ -24,16 +25,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
     
-    // Gain
-    layout.add(std::make_unique<juce::AudioParameterFloat>(
-        juce::ParameterID("gain", 1), "Output Gain", 
-        juce::NormalisableRange<float>(-24.0f, 24.0f, 0.1f, 1.0f), 0.0f));
+    // Helper lambda for adding a standard float param
+    auto addFloat = [&](const std::string& id, const juce::String& name,
+                        float min, float max, float step, float defaultVal) {
+        layout.add(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID(id, 1), name,
+            juce::NormalisableRange<float>(min, max, step), defaultVal));
+    };
 
-    // Compressor
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_threshold", 1), "Comp Threshold", juce::NormalisableRange<float>(-60.0f, 0.0f, 0.1f, 1.0f), -10.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_ratio", 1), "Comp Ratio", juce::NormalisableRange<float>(1.0f, 100.0f, 0.1f, 1.0f), 3.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_attack", 1), "Comp Attack (ms)", juce::NormalisableRange<float>(0.1f, 100.0f, 0.1f, 1.0f), 2.0f));
-    layout.add(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID("comp_release", 1), "Comp Release (ms)", juce::NormalisableRange<float>(1.0f, 1000.0f, 1.0f, 1.0f), 100.0f));
+    auto addBool = [&](const std::string& id, const juce::String& name, bool defaultVal) {
+        layout.add(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID(id, 1), name, defaultVal));
+    };
+
+    // === Compressor ===
+    addFloat("compressor.threshold", "Compressor Threshold", -60.0f, 0.0f, 0.1f, -10.0f);
+    addFloat("compressor.ratio", "Compressor Ratio", 1.0f, 100.0f, 0.1f, 3.0f);
+    addFloat("compressor.attack", "Compressor Attack (ms)", 0.1f, 100.0f, 0.1f, 2.0f);
+    addFloat("compressor.release", "Compressor Release (ms)", 1.0f, 1000.0f, 1.0f, 100.0f);
+    addFloat("compressor.mix", "Compressor Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("compressor.bypass", "Compressor Bypass", false);
+
+    // === Gain ===
+    addFloat("gain.level", "Output Gain", -24.0f, 24.0f, 0.1f, 0.0f);
+    addFloat("gain.mix", "Gain Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("gain.bypass", "Gain Bypass", false);
 
     return layout;
 }
@@ -134,10 +150,8 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     // Update parameter values
     dspChain.updateParameters(parameters);
 
-    // Execute DSP
-    juce::dsp::AudioBlock<float> block(buffer);
-    juce::dsp::ProcessContextReplacing<float> context(block);
-    dspChain.process(context);
+    // Execute DSP (buffer-based, no allocations)
+    dspChain.process(buffer);
 }
 
 bool EasyEffectsAudioProcessor::hasEditor() const

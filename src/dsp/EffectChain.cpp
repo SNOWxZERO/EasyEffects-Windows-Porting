@@ -11,9 +11,9 @@ void EffectChain::prepare(const juce::dsp::ProcessSpec& spec) {
     }
 }
 
-void EffectChain::process(const juce::dsp::ProcessContextReplacing<float>& context) {
+void EffectChain::process(juce::AudioBuffer<float>& buffer) {
     for (auto& mod : modules) {
-        mod->process(context);
+        mod->process(buffer);
     }
 }
 
