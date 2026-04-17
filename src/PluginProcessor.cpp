@@ -8,6 +8,11 @@
 #include "dsp/FilterModule.h"
 #include "dsp/DelayModule.h"
 #include "dsp/ReverbModule.h"
+#include "dsp/ExciterModule.h"
+#include "dsp/BassEnhancerModule.h"
+#include "dsp/DeesserModule.h"
+#include "dsp/ConvolverModule.h"
+#include "dsp/LevelMeterModule.h"
 
 EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -18,14 +23,19 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
       parameters(*this, nullptr, "PARAMETERS", createParameterLayout())
 #endif
 {
-    // Fixed chain order per plan: Gate → EQ → Compressor → Limiter → Filter → Delay → Reverb → Gain
+    // Fixed chain order: Gate → EQ → Deesser → Exciter → BassEnhancer → Compressor → Filter → Convolver → Delay → Reverb → Limiter → LevelMeter → Gain
     dspChain.addModule(std::make_unique<eeval::GateModule>());
     dspChain.addModule(std::make_unique<eeval::EqualizerModule>());
+    dspChain.addModule(std::make_unique<eeval::DeesserModule>());
+    dspChain.addModule(std::make_unique<eeval::ExciterModule>());
+    dspChain.addModule(std::make_unique<eeval::BassEnhancerModule>());
     dspChain.addModule(std::make_unique<eeval::CompressorModule>());
-    dspChain.addModule(std::make_unique<eeval::LimiterModule>());
     dspChain.addModule(std::make_unique<eeval::FilterModule>());
+    dspChain.addModule(std::make_unique<eeval::ConvolverModule>());
     dspChain.addModule(std::make_unique<eeval::DelayModule>());
     dspChain.addModule(std::make_unique<eeval::ReverbModule>());
+    dspChain.addModule(std::make_unique<eeval::LimiterModule>());
+    dspChain.addModule(std::make_unique<eeval::LevelMeterModule>());
     dspChain.addModule(std::make_unique<eeval::GainModule>());
 }
 
@@ -76,6 +86,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
     addFloat("eq.mix", "EQ Mix", 0.0f, 100.0f, 1.0f, 100.0f);
     addBool("eq.bypass", "EQ Bypass", false);
 
+    // === Deesser ===
+    addFloat("deesser.threshold", "Deesser Threshold", -60.0f, 0.0f, 0.1f, -20.0f);
+    addFloat("deesser.ratio", "Deesser Ratio", 1.0f, 100.0f, 0.1f, 5.0f);
+    addFloat("deesser.frequency", "Deesser Split Freq", 2000.0f, 20000.0f, 10.0f, 6000.0f);
+    addFloat("deesser.mix", "Deesser Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("deesser.bypass", "Deesser Bypass", false);
+
+    // === Exciter ===
+    addFloat("exciter.amount", "Exciter Amount", 0.0f, 1.0f, 0.01f, 0.2f);
+    addFloat("exciter.harmonics", "Exciter Harmonics", 0.0f, 1.0f, 0.01f, 0.5f);
+    addFloat("exciter.cutoff", "Exciter Cutoff", 2000.0f, 20000.0f, 10.0f, 4000.0f);
+    addFloat("exciter.mix", "Exciter Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("exciter.bypass", "Exciter Bypass", false);
+
+    // === Bass Enhancer ===
+    addFloat("bassenhancer.amount", "Bass Enhancer Amount", 0.0f, 1.0f, 0.01f, 0.2f);
+    addFloat("bassenhancer.harmonics", "Bass Enhancer Harmonics", 0.0f, 1.0f, 0.01f, 0.5f);
+    addFloat("bassenhancer.cutoff", "Bass Enhancer Cutoff", 20.0f, 1000.0f, 10.0f, 150.0f);
+    addFloat("bassenhancer.mix", "Bass Enhancer Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("bassenhancer.bypass", "Bass Enhancer Bypass", false);
+
     // === Compressor ===
     addFloat("compressor.threshold", "Compressor Threshold", -60.0f, 0.0f, 0.1f, -10.0f);
     addFloat("compressor.ratio", "Compressor Ratio", 1.0f, 100.0f, 0.1f, 3.0f);
@@ -96,6 +127,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyEffectsAudioProcessor::c
     addFloat("filter.resonance", "Filter Resonance", 0.1f, 10.0f, 0.05f, 0.707f);
     addFloat("filter.mix", "Filter Mix", 0.0f, 100.0f, 1.0f, 100.0f);
     addBool("filter.bypass", "Filter Bypass", false);
+
+    // === Convolver ===
+    addFloat("convolver.mix", "Convolver Mix", 0.0f, 100.0f, 1.0f, 100.0f);
+    addBool("convolver.bypass", "Convolver Bypass", false);
 
     // === Delay ===
     addFloat("delay.time_ms", "Delay Time (ms)", 0.0f, 2000.0f, 1.0f, 200.0f);

@@ -37,6 +37,11 @@ target_sources(EasyEffects
     src/dsp/FilterModule.cpp
     src/dsp/DelayModule.cpp
     src/dsp/ReverbModule.cpp
+    src/dsp/ExciterModule.cpp
+    src/dsp/BassEnhancerModule.cpp
+    src/dsp/DeesserModule.cpp
+    src/dsp/ConvolverModule.cpp
+    src/dsp/LevelMeterModule.cpp
 )
 
 # Link JUCE modules

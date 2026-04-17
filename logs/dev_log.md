@@ -29,14 +29,6 @@
 * Replaced the hardcoded Gain hook in the audio processor with the dynamic `EffectChain`.
 * Compiled successfully without performance regressions.
 
-## Phase 3 Extended: Complex Modules
-* Ported user-request to ensure the modular chain could handle complex parameter sets.
-* Added `eeval::CompressorModule` leveraging `juce::dsp::Compressor`.
-* Mapped `comp_threshold`, `comp_ratio`, `comp_attack`, `comp_release` to the APVTS.
-* Re-arranged the UI in `PluginEditor.cpp` to place compressor knobs at the top.
-* Inserted `CompressorModule` upstream of `GainModule` inside the `EffectChain`.
-* Compiled successfully.
-
 ## Phase 4 & 5: UI Overhaul and Preset System
 * Restructured the PluginEditor from a flat slider dump into a sidebar-navigated layout.
 * Implemented `juce::ListBoxModel` for a sidebar listing all loaded DSP modules dynamically.
@@ -47,4 +39,16 @@
 * Presets store full APVTS state + `selectedEditorIndex` for future module chain metadata.
 * Added auto-save on exit: `~Editor()` writes to `%APPDATA%/EasyEffectsWindows/autosave.xml`.
 * Added auto-load on startup: constructor reads `autosave.xml` if present and restores full state.
-* Compiled successfully.
+
+## Phase 3B: Core Effects Implementation (Batch 1)
+* Refactored `EffectModule` to internalize dry/wet Mix and Bypass logic completely, hiding it from subclasses.
+* Subclasses now only implement `processInternal()`, enforcing real-time safety.
+* Enforced `<module>.<param>` naming standard for APVTS mappings.
+* Implemented `GateModule` using `juce::dsp::NoiseGate`.
+* Implemented `EqualizerModule` utilizing scalable `std::vector` of `juce::dsp::IIR::Filter`. Defaulted to 4 pre-allocated bands.
+* Implemented `LimiterModule` using `juce::dsp::Limiter`.
+* Implemented `FilterModule` using duplicated stereo `juce::dsp::IIR::Filter` (HP/LP toggleable).
+* Implemented `DelayModule` using `juce::dsp::DelayLine` (pre-allocated 2000ms max buffer).
+* Implemented `ReverbModule` using `juce::dsp::Reverb`.
+* Temporarily simplified `PluginEditor` to display a textual list of loaded modules until Phase 4B rebuild.
+* Compiled successfully!
