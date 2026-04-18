@@ -11,20 +11,22 @@ public:
     GenericModuleEditor(juce::AudioProcessorValueTreeState& stateToUse, const std::string& modId, const std::string& modName)
         : apvts(stateToUse), moduleId(modId), moduleName(modName)
     {
-        // Setup Bypass Toggle
-        bypassToggle.setButtonText("Bypass");
-        bypassToggle.setClickingTogglesState(true);
-        addAndMakeVisible(bypassToggle);
-        
-        auto bypassParamId = moduleId + ".bypass";
-        bypassAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
-            apvts, bypassParamId, bypassToggle);
+        // Bypass was removed here since it is now handled by the SidebarRowCustomComponent!
 
         // Standard Parameters
         auto params = ModuleDescriptors::getParametersForModule(moduleId);
         
         for (const auto& pdesc : params) {
-            auto* slider = new juce::Slider(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::TextBoxBelow);
+            juce::Slider* slider = nullptr;
+            
+            if (moduleId == "eq") {
+                // EQ uses vertical sliders like the GTK app
+                slider = new juce::Slider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
+            } else {
+                // Other parameters use number spinners layout
+                slider = new juce::Slider(juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft);
+            }
+            
             slider->setTextValueSuffix(" " + pdesc.unit);
             
             auto* label = new juce::Label(pdesc.id + "_label", pdesc.label);
@@ -60,46 +62,46 @@ public:
     ~GenericModuleEditor() override = default;
 
     void paint(juce::Graphics& g) override {
-        // Draw module title
-        g.setColour(theme::textPrimary);
-        g.setFont(juce::Font(22.0f, juce::Font::bold));
-        g.drawText(moduleName, getLocalBounds().removeFromTop(40).withTrimmedLeft(10), juce::Justification::centredLeft);
+        // Just clear background, no need to draw title since it's obvious in the sidebar GTK layout
+        juce::ignoreUnused(g);
     }
 
     void resized() override {
-        auto area = getLocalBounds();
-        
-        auto header = area.removeFromTop(40);
-        bypassToggle.setBounds(header.removeFromRight(100).reduced(5));
-
-        // Fixed Grid Layout
-        area.reduce(20, 20); // padding
-        
-        int itemWidth = 100;
-        int itemHeight = 120;
-        int maxPerRow = juce::jmax(1, area.getWidth() / itemWidth);
+        auto area = getLocalBounds().reduced(20);
         
         int x = area.getX();
         int y = area.getY();
         
-        int drawnCount = 0;
-
-        // Place special combo box first if exists
         if (filterTypeCombo != nullptr) {
-            filterTypeCombo->setBounds(x + 10, y + 20, itemWidth - 20, 24);
-            x += itemWidth;
-            drawnCount++;
+            filterTypeCombo->setBounds(x + 120, y, 150, 30);
+            labels[0]->setBounds(x, y, 100, 30);
+            y += 40;
         }
 
-        // Place all standard sliders
-        for (auto* slider : sliders) {
-            if (drawnCount > 0 && drawnCount % maxPerRow == 0) {
-                x = area.getX();
-                y += itemHeight;
+        if (moduleId == "eq") {
+            // Horizontal layout for EQ sliders
+            int itemWidth = 60;
+            int itemHeight = 300;
+            for (int i = 0; i < sliders.size(); ++i) {
+                if (labels[i]->getText() == "Mix") continue; // draw Mix somewhere else or ignore
+                sliders[i]->setBounds(x, y + 20, itemWidth, itemHeight);
+                labels[i]->setBounds(x, y, itemWidth, 20);
+                x += itemWidth + 10;
             }
-            slider->setBounds(x + 5, y + 20, itemWidth - 10, itemHeight - 20);
-            x += itemWidth;
-            drawnCount++;
+        } else {
+            // Vertical layout for GTK-style spinners
+            int itemHeight = 30;
+            int currentLabelIdx = filterTypeCombo != nullptr ? 1 : 0;
+            
+            for (int i = 0; i < sliders.size(); ++i) {
+                // Layout: [Label         ] [ Spinner ]
+                labels[currentLabelIdx]->setBounds(x, y, 150, itemHeight);
+                labels[currentLabelIdx]->setJustificationType(juce::Justification::centredLeft);
+                sliders[i]->setBounds(x + 160, y, 120, itemHeight);
+                
+                y += itemHeight + 10;
+                currentLabelIdx++;
+            }
         }
     }
 
@@ -107,9 +109,6 @@ private:
     juce::AudioProcessorValueTreeState& apvts;
     std::string moduleId;
     std::string moduleName;
-    
-    juce::TextButton bypassToggle;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> bypassAttachment;
 
     juce::OwnedArray<juce::Slider> sliders;
     juce::OwnedArray<juce::Label> labels;
