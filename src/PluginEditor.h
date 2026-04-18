@@ -5,6 +5,7 @@
 #include "ui/Theme.h"
 #include "ui/GenericModuleEditor.h"
 #include "ui/LevelMeterEditor.h"
+#include "ui/SpectrumAnalyzerPlaceholder.h"
 
 class EasyEffectsAudioProcessorEditor : public juce::AudioProcessorEditor,
                                         private juce::ListBoxModel
@@ -36,6 +37,10 @@ private:
     juce::ListBox moduleList;
     std::vector<std::string> displayNames;
     std::vector<std::string> moduleIds;
+
+    // Global Panels
+    std::unique_ptr<eeval::ui::LevelMeterEditor> globalFooterMeter;
+    eeval::ui::SpectrumAnalyzerPlaceholder fftPlaceholder;
 
     // Main Content
     juce::Viewport viewport;

@@ -31,8 +31,16 @@ public:
     // Phase 5: Editor State & UI Synchronization
     int getSelectedEditorIndex() const { return selectedEditorIndex; }
     void setSelectedEditorIndex(int index) { selectedEditorIndex = index; }
-    std::vector<std::string> getActiveEffectNames() const { return dspChain.getModuleNames(); }
-    std::vector<std::string> getActiveEffectIds() const { return dspChain.getModuleIds(); }
+    std::vector<std::string> getActiveEffectNames() const { 
+        auto names = dspChain.getModuleNames();
+        names.erase(std::remove(names.begin(), names.end(), "Level Meter"), names.end());
+        return names;
+    }
+    std::vector<std::string> getActiveEffectIds() const {
+        auto ids = dspChain.getModuleIds();
+        ids.erase(std::remove(ids.begin(), ids.end(), "meter"), ids.end());
+        return ids;
+    }
     
     // For LevelMeter UI polling
     eeval::LevelMeterModule* getLevelMeter();

@@ -90,10 +90,19 @@ void EasyEffectsAudioProcessorEditor::resized()
     auto area = getLocalBounds();
     
     // Header
-    auto header = area.removeFromTop(60);
-    loadPresetBtn.setBounds(header.removeFromRight(120).reduced(10));
-    savePresetBtn.setBounds(header.removeFromRight(120).reduced(10));
+    auto header = area.removeFromTop(40);
+    loadPresetBtn.setBounds(header.removeFromRight(120).reduced(5));
+    savePresetBtn.setBounds(header.removeFromRight(120).reduced(5));
     
+    // Global Footer
+    auto footer = area.removeFromBottom(40);
+    if (globalFooterMeter) {
+        globalFooterMeter->setBounds(footer.removeFromRight(300));
+    }
+    
+    // Global Spectrum Analyzer (Top)
+    fftPlaceholder.setBounds(area.removeFromTop(150).reduced(5));
+
     // Sidebar
     moduleList.setBounds(area.removeFromLeft(200));
     

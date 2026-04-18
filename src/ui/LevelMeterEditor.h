@@ -19,17 +19,23 @@ public:
     void paint(juce::Graphics& g) override {
         auto area = getLocalBounds();
         
-        g.setColour(theme::textPrimary);
-        g.setFont(juce::Font(22.0f, juce::Font::bold));
-        g.drawText("Level Meter", area.removeFromTop(40).withTrimmedLeft(10), juce::Justification::centredLeft);
+        g.setColour(theme::bgBase); // Very dark footer bg
+        g.fillRect(area);
 
-        area.reduce(20, 20);
+        area.reduce(10, 5); // padding
+
+        // Simple text readout
+        g.setColour(theme::textSecondary);
+        g.setFont(14.0f);
+        juce::String text = juce::String(cachedPeak, 1) + " dB";
+        g.drawText(text, area.removeFromLeft(60), juce::Justification::centredLeft);
+
+        auto leftMeter = area.removeFromTop(area.getHeight() / 2 - 2);
+        area.removeFromTop(4); // spacing
+        auto rightMeter = area; // remaining bottom half
         
-        auto leftMeter = area.removeFromTop(40);
-        auto rightMeter = area.removeFromTop(40).withTrimmedTop(10);
-        
-        drawMeterBar(g, leftMeter, "L", cachedRms, cachedPeak);
-        drawMeterBar(g, rightMeter, "R", cachedRms, cachedPeak); // Displaying same for now since meter is mono-averaged internally, but laid out for future stereo expansion.
+        drawMeterBar(g, leftMeter, cachedRms, cachedPeak);
+        drawMeterBar(g, rightMeter, cachedRms, cachedPeak); 
     }
 
     void timerCallback() override {
@@ -51,16 +57,12 @@ private:
     float cachedRms = -100.0f;
     float cachedPeak = -100.0f;
 
-    void drawMeterBar(juce::Graphics& g, juce::Rectangle<int> bounds, const juce::String& label, float rmsDb, float peakDb) {
-        g.setColour(theme::textSecondary);
-        g.setFont(14.0f);
-        g.drawText(label, bounds.removeFromLeft(20), juce::Justification::centredLeft);
-        
+    void drawMeterBar(juce::Graphics& g, juce::Rectangle<int> bounds, float rmsDb, float peakDb) {        
         auto meterArea = bounds;
         
         // Draw background
         g.setColour(theme::bgOverlay);
-        g.fillRoundedRectangle(meterArea.toFloat(), 4.0f);
+        g.fillRoundedRectangle(meterArea.toFloat(), 2.0f);
         
         // Calculate width mappings (ranging from -60dB to 0dB)
         auto normalizeDb = [](float db) { return juce::jlimit(0.0f, 1.0f, (db + 60.0f) / 60.0f); };
@@ -70,8 +72,8 @@ private:
         
         // Draw RMS filled bar
         auto rmsRect = meterArea.withWidth((int)(meterArea.getWidth() * rmsRatio));
-        g.setColour(theme::accentPrimary);
-        g.fillRoundedRectangle(rmsRect.toFloat(), 4.0f);
+        g.setColour(theme::accentPrimary); // original green style later
+        g.fillRoundedRectangle(rmsRect.toFloat(), 2.0f);
         
         // Draw Peak line
         if (peakRatio > 0.0f) {
@@ -80,10 +82,6 @@ private:
             g.setColour(theme::accentDanger);
             g.fillRect(peakX, meterArea.getY(), 2, meterArea.getHeight());
         }
-        
-        // Draw current value
-        g.setColour(theme::textPrimary);
-        g.drawText(juce::String(peakDb, 1) + " dB", meterArea.withTrimmedRight(10), juce::Justification::centredRight);
     }
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LevelMeterEditor)
