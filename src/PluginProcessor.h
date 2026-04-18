@@ -45,6 +45,25 @@ public:
     // For LevelMeter UI polling
     eeval::LevelMeterModule* getLevelMeter();
 
+    // FFT Visualization Data (Pass to UI safely)
+    static constexpr int fftOrder = 11;
+    static constexpr int fftSize = 1 << fftOrder; // 2048
+    std::array<float, fftSize> fifo;
+    std::array<float, fftSize * 2> fftData; // 2x size for complex results
+    int fifoIndex = 0;
+    std::atomic<bool> nextFFTBlockReady { false };
+    
+    void pushNextSampleIntoFifo(float sample) noexcept {
+        if (fifoIndex == fftSize) {
+            if (!nextFFTBlockReady) {
+                std::copy(fifo.begin(), fifo.end(), fftData.begin());
+                nextFFTBlockReady = true;
+            }
+            fifoIndex = 0;
+        }
+        fifo[(size_t)fifoIndex++] = sample;
+    }
+
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram(int index) override;

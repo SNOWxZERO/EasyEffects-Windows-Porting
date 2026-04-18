@@ -52,6 +52,14 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     viewport.setScrollBarsShown(true, false);
     addAndMakeVisible(viewport);
 
+    // Setup Global Footer
+    globalFooterMeter = std::make_unique<eeval::ui::LevelMeterEditor>(audioProcessor.getLevelMeter());
+    addAndMakeVisible(globalFooterMeter.get());
+
+    // Setup FFT Analyzer
+    fftAnalyzer = std::make_unique<eeval::ui::SpectrumAnalyzerEditor>(audioProcessor);
+    addAndMakeVisible(fftAnalyzer.get());
+
     int lastSelected = audioProcessor.getSelectedEditorIndex();
     if (lastSelected >= 0 && lastSelected < (int)displayNames.size()) {
         moduleList.selectRow(lastSelected, false, true);
@@ -101,7 +109,9 @@ void EasyEffectsAudioProcessorEditor::resized()
     }
     
     // Global Spectrum Analyzer (Top)
-    fftPlaceholder.setBounds(area.removeFromTop(150).reduced(5));
+    if (fftAnalyzer) {
+        fftAnalyzer->setBounds(area.removeFromTop(150).reduced(5));
+    }
 
     // Sidebar
     moduleList.setBounds(area.removeFromLeft(200));

@@ -258,6 +258,17 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
 
     // Execute DSP (buffer-based, no allocations)
     dspChain.process(buffer);
+
+    // Push final output to FFT fifo
+    if (buffer.getNumChannels() > 0) {
+        auto* channelDataL = buffer.getReadPointer(0);
+        auto* channelDataR = buffer.getNumChannels() > 1 ? buffer.getReadPointer(1) : nullptr;
+        for (int i = 0; i < buffer.getNumSamples(); ++i) {
+            float sample = channelDataL[i];
+            if (channelDataR != nullptr) sample = (sample + channelDataR[i]) * 0.5f;
+            pushNextSampleIntoFifo(sample);
+        }
+    }
 }
 
 bool EasyEffectsAudioProcessor::hasEditor() const

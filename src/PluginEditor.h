@@ -5,7 +5,7 @@
 #include "ui/Theme.h"
 #include "ui/GenericModuleEditor.h"
 #include "ui/LevelMeterEditor.h"
-#include "ui/SpectrumAnalyzerPlaceholder.h"
+#include "ui/SpectrumAnalyzerEditor.h"
 #include "ui/SidebarRowCustomComponent.h"
 
 class EasyEffectsAudioProcessorEditor : public juce::AudioProcessorEditor,
@@ -42,7 +42,7 @@ private:
 
     // Global Panels
     std::unique_ptr<eeval::ui::LevelMeterEditor> globalFooterMeter;
-    eeval::ui::SpectrumAnalyzerPlaceholder fftPlaceholder;
+    std::unique_ptr<eeval::ui::SpectrumAnalyzerEditor> fftAnalyzer;
 
     // Main Content
     juce::Viewport viewport;
