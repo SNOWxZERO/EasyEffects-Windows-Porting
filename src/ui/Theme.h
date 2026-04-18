@@ -4,17 +4,17 @@
 namespace eeval {
 namespace theme {
 
-// Color Palette
-const juce::Colour bgBase        = juce::Colour::fromString("#1E1E2E");
-const juce::Colour bgSurface     = juce::Colour::fromString("#313244");
-const juce::Colour bgOverlay     = juce::Colour::fromString("#45475A");
+// Color Palette (GTK4 / Libadwaita Dark)
+const juce::Colour bgBase        = juce::Colour::fromString("#242424"); // Main Background
+const juce::Colour bgSurface     = juce::Colour::fromString("#1E1E1E"); // Sidebar/Footer
+const juce::Colour bgOverlay     = juce::Colour::fromString("#303030"); // Hover/Active states
 
-const juce::Colour textPrimary   = juce::Colour::fromString("#CDD6F4");
-const juce::Colour textSecondary = juce::Colour::fromString("#A6ADC8");
+const juce::Colour textPrimary   = juce::Colour::fromString("#FFFFFF");
+const juce::Colour textSecondary = juce::Colour::fromString("#A0A0A0");
 
-const juce::Colour accentPrimary = juce::Colour::fromString("#89B4FA"); // Vibrant blue
-const juce::Colour accentSuccess = juce::Colour::fromString("#A6E3A1"); // Green (for bypass ON)
-const juce::Colour accentDanger  = juce::Colour::fromString("#F38BA8"); // Red
+const juce::Colour accentPrimary = juce::Colour::fromString("#3584E4"); // Libadwaita Blue (Sliders)
+const juce::Colour accentSuccess = juce::Colour::fromString("#2ED573"); // GTK Green (Spectrum)
+const juce::Colour accentDanger  = juce::Colour::fromString("#E01B24"); // GTK Red (Bypass/Peaks)
 
 class CustomLookAndFeel : public juce::LookAndFeel_V4 {
 public:
@@ -34,40 +34,13 @@ public:
         setColour(juce::ListBox::backgroundColourId, bgBase);
         setColour(juce::ListBox::textColourId, textSecondary);
         setColour(juce::ListBox::outlineColourId, juce::Colours::transparentBlack);
-    }
 
-    // Modern flat rotary slider
-    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
-                          float sliderPos, const float rotaryStartAngle,
-                          const float rotaryEndAngle, juce::Slider& slider) override
-    {
-        auto radius = (float)juce::jmin(width / 2, height / 2) - 4.0f;
-        auto centreX = (float)x + (float)width  * 0.5f;
-        auto centreY = (float)y + (float)height * 0.5f;
-        auto rx = centreX - radius;
-        auto ry = centreY - radius;
-        auto rw = radius * 2.0f;
-        auto angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
+        // Clean flat slider tracks for the EQ LinearVertical sliders
+        setColour(juce::Slider::trackColourId, bgSurface);
+        setColour(juce::Slider::backgroundColourId, bgOverlay);
 
-        // Draw track
-        g.setColour(bgOverlay);
-        g.drawEllipse(rx, ry, rw, rw, 4.0f);
-
-        // Draw fill arc
-        juce::Path p;
-        auto arcRadius = radius;
-        p.addCentredArc(centreX, centreY, arcRadius, arcRadius, 0.0f, rotaryStartAngle, angle, true);
-        
-        g.setColour(slider.findColour(juce::Slider::rotarySliderFillColourId));
-        g.strokePath(p, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        
-        // Draw thumb marker
-        juce::Path thumb;
-        auto pointerLength = radius * 0.8f;
-        auto pointerThickness = 3.0f;
-        thumb.addRectangle(-pointerThickness * 0.5f, -radius, pointerThickness, pointerLength);
-        thumb.applyTransform(juce::AffineTransform::rotation(angle).translated(centreX, centreY));
-        g.fillPath(thumb);
+        // Spinner / NumberBox styling
+        setColour(juce::Slider::textBoxHighlightColourId, accentPrimary.withAlpha(0.3f));
     }
     
     juce::Font getLabelFont(juce::Label& label) override {
