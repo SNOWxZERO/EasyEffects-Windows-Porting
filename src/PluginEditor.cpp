@@ -119,13 +119,29 @@ int EasyEffectsAudioProcessorEditor::getNumRows() {
 }
 
 void EasyEffectsAudioProcessorEditor::paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) {
-    if (rowIsSelected) {
-        g.fillAll(eeval::theme::bgOverlay);
+    juce::ignoreUnused(rowNumber, g, width, height, rowIsSelected);
+    // Custom painting handled entirely within SidebarRowCustomComponent
+}
+
+juce::Component* EasyEffectsAudioProcessorEditor::refreshComponentForRow(int rowNumber, bool isRowSelected, juce::Component* existingComponentToUpdate) {
+    if (rowNumber < 0 || rowNumber >= (int)displayNames.size()) {
+        delete existingComponentToUpdate;
+        return nullptr;
     }
-    
-    g.setColour(rowIsSelected ? eeval::theme::textPrimary : eeval::theme::textSecondary);
-    g.setFont(16.0f);
-    g.drawText(displayNames[(size_t)rowNumber], 20, 0, width - 20, height, juce::Justification::centredLeft, true);
+
+    auto* rowComp = dynamic_cast<eeval::ui::SidebarRowCustomComponent*>(existingComponentToUpdate);
+
+    if (rowComp == nullptr) {
+        rowComp = new eeval::ui::SidebarRowCustomComponent(
+            audioProcessor.parameters, 
+            moduleIds[(size_t)rowNumber], 
+            displayNames[(size_t)rowNumber], 
+            rowNumber
+        );
+    }
+
+    rowComp->update(isRowSelected);
+    return rowComp;
 }
 
 void EasyEffectsAudioProcessorEditor::listBoxItemClicked(int row, const juce::MouseEvent&) {

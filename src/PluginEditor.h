@@ -6,6 +6,7 @@
 #include "ui/GenericModuleEditor.h"
 #include "ui/LevelMeterEditor.h"
 #include "ui/SpectrumAnalyzerPlaceholder.h"
+#include "ui/SidebarRowCustomComponent.h"
 
 class EasyEffectsAudioProcessorEditor : public juce::AudioProcessorEditor,
                                         private juce::ListBoxModel
@@ -20,6 +21,7 @@ public:
     // ListBoxModel
     int getNumRows() override;
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
+    juce::Component* refreshComponentForRow(int rowNumber, bool isRowSelected, juce::Component* existingComponentToUpdate) override;
     void listBoxItemClicked(int row, const juce::MouseEvent&) override;
 
 private:
