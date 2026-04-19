@@ -31,16 +31,57 @@ Download and install your chosen cable, and then explicitly **Restart your PC**.
 1. Open the **EasyEffects Standalone** application.
 2. In the top OS menubar of the app, click **Options -> Audio/MIDI Settings**.
 3. Configure the settings exactly as follows:
-   * **Audio Device Type:** `Windows Audio (Exclusive)` or `WASAPI`
+   * **Audio Device Type:** `Windows Audio`
    * **Input Device:** `CABLE Output (VB-Audio Virtual Cable)`
-   * **Output Device:** `Your Real Physical Headphones / Speakers (e.g., Realtek High Definition Audio)`
+   * **Output Device:** `Your Real Physical Headphones / Speakers (e.g., Speakers K75)`
    * **Sample Rate:** `48000 Hz` (Recommended to match standard Windows format)
-   * **Audio Buffer Size:** `256` or `512` samples (Lower means less latency, but higher CPU usage).
+   * **Audio Buffer Size:** `512` samples (Lower means less latency, but higher CPU usage).
+   * **Feedback Loop:** Uncheck "Mute audio input" so audio flows through.
 
 ### Step 4: Verify the DSP Chain
 1. Play some audio from a web browser or Spotify.
-2. Open EasyEffects and click the **Level Meter**. You should see the graphical meters moving in real-time.
+2. Open EasyEffects and check the **Level Meter** in the footer. You should see the graphical meters moving in real-time.
 3. Turn on the **Equalizer** or **Limiter** and make extreme changes to verify that the core audio pipeline is successfully routing into your headphones.
+
+---
+
+## Discord / Voice Chat Routing (Microphone Processing)
+
+For processing your **microphone** audio before sending it to Discord, the routing is different:
+
+### Signal Chain
+```
+Physical Mic (Fifine) → EasyEffects → VB-Audio Virtual Cable → Discord
+```
+
+### EasyEffects Audio/MIDI Settings
+| Setting | Value |
+|---------|-------|
+| Audio Device Type | Windows Audio |
+| **Input** | **Microphone (Fifine Microphone)** |
+| **Output** | **CABLE Input (VB-Audio Virtual Cable)** |
+| Feedback Loop | **Uncheck** "Mute audio input" |
+| Sample Rate | 48000 Hz |
+| Audio Buffer Size | 512 samples (10.7 ms) |
+
+### Discord Settings
+| Setting | Value |
+|---------|-------|
+| **Input Device** | **CABLE Output (VB-Audio Virtual Cable)** |
+| **Output Device** | **Speakers (K75) or your headphones** |
+
+### Recommended Voice Effects Settings
+
+| Effect | Recommended Settings | Purpose |
+|--------|---------------------|---------|
+| **Gate** | Threshold: -40 dB, Attack: 1 ms, Release: 100 ms | Cuts background noise when not speaking |
+| **Compressor** | Threshold: -20 dB, Ratio: 4:1, Attack: 5 ms, Release: 50 ms | Evens out voice volume |
+| **EQ** | Slight boost at 2-4 kHz bands | Adds clarity/presence to voice |
+| **Deesser** | Threshold: -20 dB, Freq: 6000 Hz | Reduces harsh sibilant "S" sounds |
+| **Limiter** | Threshold: -3 dB | Prevents clipping when speaking loudly |
+| **Gain** | Adjust to taste (0 to +6 dB) | Final output level adjustment |
+
+**Bypass (disable)** effects you don't need for voice: Exciter, Bass Enhancer, Convolver, Delay, Reverb.
 
 ---
 

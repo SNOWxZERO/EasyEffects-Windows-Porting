@@ -57,3 +57,42 @@
 * **Lifecycle State Validation:** Fixed `juce::SliderAttachment` memory leaks by wrapping the arrays directly in `juce::OwnedArray` tied to the lifecycle of the GenericModuleEditor.
 * **LevelMeter Custom UI:** Developed specialized `LevelMeterEditor.h` drawing accurate graphical volume bars running via an asynchronous decoupled `juce::Timer` pulling the lock-free atomics at 30Hz natively.
 * **PluginEditor Core Refactor:** Re-skinned the core shell, adding deep dark colors, proper Header spacing, async `FileChooser` operations for preset management, and a `juce::Viewport` wrapper explicitly preventing components from overflowing the fixed screen layout.
+
+## Phase 7: GTK4 Layout Structure
+* Restructured main layout into persistent Top-Bar (FFT Analyzer), Left-Hand Sidebar (ListBox), Central Viewport, and Bottom-Bar (Level Meter).
+* Built lock-free FFT Spectrum Analyzer using `juce::dsp::FFT`, `juce::AbstractFifo`, and 30Hz `juce::Timer`.
+* Implemented `SidebarRowCustomComponent` with bypass toggle buttons inside ListBox rows.
+* Overhauled `GenericModuleEditor` to use `LinearVertical` sliders (for EQ) and parameter spinners.
+* Applied initial `Libadwaita Dark` color palette (`#242424` base, `#3584E4` blue accents, `#2ED573` green spectrum).
+
+## Phase 8: Complete UI Overhaul
+* **Root cause identified:** Previous UI issues (invisible text, broken layouts) were caused by:
+  - JUCE child components (ToggleButton, Label) covering ListBox rows and intercepting all clicks.
+  - Default JUCE theme not setting explicit text colors for Labels, TextButtons, and Sliders.
+  - Mismatched header height between `paint()` (60px) and `resized()` (40px) causing overlap.
+  - `label->attachToComponent()` overriding manual layout positioning.
+* **Theme.h complete rewrite:**
+  - Custom `drawLinearSlider()` with visible tracks, blue filled portions, and white/blue thumb circles.
+  - Custom `drawButtonBackground()` with rounded corners and border.
+  - Explicit color IDs for Labels, TextButtons, ComboBoxes, ScrollBars, PopupMenus.
+  - Switched from `juce::Colour::fromString()` to `juce::Colour(0xFF...)` constructor for reliability.
+* **SidebarRowCustomComponent rewrite:**
+  - Removed invisible `ToggleButton` and `juce::Label` child components entirely.
+  - Now uses pure `paint()` drawing via `Graphics::drawText()` for guaranteed text visibility.
+  - Blue accent bar on left edge when selected (matching original GTK app).
+  - Green/red bypass indicator circles drawn via `Graphics::fillEllipse()`.
+  - Fixed sidebar navigation: `mouseDown()` now calls `findParentComponentOfClass<ListBox>()->selectRow()`.
+* **GenericModuleEditor rewrite:**
+  - GTK-style "Controls" card panel with rounded dark background.
+  - Module title displayed at top.
+  - Proper label + horizontal slider rows with TextBoxRight value readouts.
+  - Filter type ComboBox handled separately from main slider array.
+* **PluginEditor layout fix:**
+  - Consistent layout constants: `headerHeight=50`, `fftHeight=120`, `footerHeight=36`, `sidebarWidth=180`.
+  - Window enlarged to 1000×650 for breathing room.
+  - Explicit sidebar background fill and 1px separator line.
+  - Footer with status text ("48.0 kHz | EasyEffects Windows").
+  - Added `selectedRowsChanged()` override for reliable editor switching.
+* **Documentation updated:**
+  - `docs/system_routing.md` expanded with Discord/voice chat routing guide.
+  - Recommended voice processing effect settings documented.
