@@ -7,12 +7,12 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     // Apply global modern theme
     setLookAndFeel(&customTheme);
     
-    setSize(900, 600);
+    setSize(1000, 650);
 
     displayNames = audioProcessor.getActiveEffectNames();
     moduleIds = audioProcessor.getActiveEffectIds();
 
-    // Setup Header
+    // Setup Header buttons
     addAndMakeVisible(savePresetBtn);
     addAndMakeVisible(loadPresetBtn);
     
@@ -45,11 +45,13 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
 
     // Setup Sidebar
     moduleList.setModel(this);
-    moduleList.setRowHeight(40);
+    moduleList.setRowHeight(36);
+    moduleList.setColour(juce::ListBox::backgroundColourId, eeval::theme::bgSurface);
     addAndMakeVisible(moduleList);
 
     // Setup Viewport for main content
     viewport.setScrollBarsShown(true, false);
+    viewport.setScrollBarThickness(8);
     addAndMakeVisible(viewport);
 
     // Setup Global Footer
@@ -81,16 +83,42 @@ EasyEffectsAudioProcessorEditor::~EasyEffectsAudioProcessorEditor()
 
 void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
 {
+    // Main background
     g.fillAll(eeval::theme::bgBase);
     
-    // Draw header background
+    // Header background
     g.setColour(eeval::theme::bgSurface);
-    g.fillRect(0, 0, getWidth(), 60);
+    g.fillRect(0, 0, getWidth(), headerHeight);
+
+    // Header bottom border
+    g.setColour(eeval::theme::borderSubtle);
+    g.fillRect(0, headerHeight - 1, getWidth(), 1);
     
-    // Draw logo/branding
-    g.setColour(eeval::theme::accentPrimary);
-    g.setFont(juce::Font(24.0f, juce::Font::bold));
-    g.drawText("EasyEffects Windows", 20, 0, 300, 60, juce::Justification::centredLeft);
+    // Draw logo/branding in header
+    g.setColour(eeval::theme::textPrimary);
+    g.setFont(18.0f);
+    g.drawText("Easy Effects", 15, 0, 200, headerHeight, juce::Justification::centredLeft);
+
+    // Sidebar background (explicit fill to ensure it's visible)
+    g.setColour(eeval::theme::bgSurface);
+    g.fillRect(0, headerHeight, sidebarWidth, getHeight() - headerHeight - footerHeight);
+
+    // Sidebar right border (separator line)
+    g.setColour(eeval::theme::borderSubtle);
+    g.fillRect(sidebarWidth, headerHeight, 1, getHeight() - headerHeight - footerHeight - fftHeight);
+
+    // Footer background
+    g.setColour(eeval::theme::bgSurface);
+    g.fillRect(0, getHeight() - footerHeight, getWidth(), footerHeight);
+
+    // Footer top border
+    g.setColour(eeval::theme::borderSubtle);
+    g.fillRect(0, getHeight() - footerHeight, getWidth(), 1);
+
+    // Footer status text
+    g.setColour(eeval::theme::textSecondary);
+    g.setFont(12.0f);
+    g.drawText("48.0 kHz | EasyEffects Windows", 15, getHeight() - footerHeight, 250, footerHeight, juce::Justification::centredLeft);
 }
 
 void EasyEffectsAudioProcessorEditor::resized()
@@ -98,28 +126,31 @@ void EasyEffectsAudioProcessorEditor::resized()
     auto area = getLocalBounds();
     
     // Header
-    auto header = area.removeFromTop(40);
-    loadPresetBtn.setBounds(header.removeFromRight(120).reduced(5));
-    savePresetBtn.setBounds(header.removeFromRight(120).reduced(5));
+    auto header = area.removeFromTop(headerHeight);
+    // Buttons on the right side of header
+    auto headerRight = header.removeFromRight(280);
+    loadPresetBtn.setBounds(headerRight.removeFromRight(130).reduced(8, 10));
+    savePresetBtn.setBounds(headerRight.removeFromRight(130).reduced(8, 10));
     
-    // Global Footer
-    auto footer = area.removeFromBottom(40);
+    // Footer
+    auto footer = area.removeFromBottom(footerHeight);
     if (globalFooterMeter) {
-        globalFooterMeter->setBounds(footer.removeFromRight(300));
+        globalFooterMeter->setBounds(footer.removeFromRight(350).reduced(5, 4));
     }
     
-    // Global Spectrum Analyzer (Top)
+    // FFT Analyzer (full width, below header)
     if (fftAnalyzer) {
-        fftAnalyzer->setBounds(area.removeFromTop(150).reduced(5));
+        fftAnalyzer->setBounds(area.removeFromTop(fftHeight).reduced(2, 2));
     }
 
     // Sidebar
-    moduleList.setBounds(area.removeFromLeft(200));
+    moduleList.setBounds(area.removeFromLeft(sidebarWidth));
     
-    // Main Content
+    // Main Content (remaining space)
     viewport.setBounds(area);
     if (currentEditor != nullptr) {
-        currentEditor->setSize(area.getWidth() - 20, 800); // Fixed high height to allow scroll
+        int contentHeight = juce::jmax(area.getHeight(), 450); // Allow scroll for tall content
+        currentEditor->setSize(area.getWidth() - 10, contentHeight);
     }
 }
 
@@ -157,6 +188,13 @@ juce::Component* EasyEffectsAudioProcessorEditor::refreshComponentForRow(int row
 void EasyEffectsAudioProcessorEditor::listBoxItemClicked(int row, const juce::MouseEvent&) {
     audioProcessor.setSelectedEditorIndex(row);
     rebuildEditorView();
+}
+
+void EasyEffectsAudioProcessorEditor::selectedRowsChanged(int lastRowSelected) {
+    if (lastRowSelected >= 0 && lastRowSelected < (int)moduleIds.size()) {
+        audioProcessor.setSelectedEditorIndex(lastRowSelected);
+        rebuildEditorView();
+    }
 }
 
 void EasyEffectsAudioProcessorEditor::rebuildEditorView() {

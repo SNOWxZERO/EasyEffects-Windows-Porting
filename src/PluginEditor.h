@@ -23,6 +23,7 @@ public:
     void paintListBoxItem(int rowNumber, juce::Graphics& g, int width, int height, bool rowIsSelected) override;
     juce::Component* refreshComponentForRow(int rowNumber, bool isRowSelected, juce::Component* existingComponentToUpdate) override;
     void listBoxItemClicked(int row, const juce::MouseEvent&) override;
+    void selectedRowsChanged(int lastRowSelected) override;
 
 private:
     void rebuildEditorView();
@@ -47,6 +48,12 @@ private:
     // Main Content
     juce::Viewport viewport;
     std::unique_ptr<juce::Component> currentEditor;
+
+    // Layout constants
+    static constexpr int headerHeight = 50;
+    static constexpr int fftHeight = 120;
+    static constexpr int footerHeight = 36;
+    static constexpr int sidebarWidth = 180;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EasyEffectsAudioProcessorEditor)
 };
