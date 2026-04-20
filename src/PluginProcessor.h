@@ -2,6 +2,7 @@
 
 #include <JuceHeader.h>
 #include "dsp/EffectChain.h"
+#include "dsp/EffectRegistry.h"
 
 namespace eeval { class LevelMeterModule; }
 
@@ -28,31 +29,41 @@ public:
     bool isMidiEffect() const override;
     double getTailLengthSeconds() const override;
 
-    // Phase 5: Editor State & UI Synchronization
+    // --- Dynamic Chain Management (UI thread) ---
+
+    // Add an effect to the next available slot, returns slot index or -1
+    int addEffect(const std::string& typeId);
+
+    // Remove an effect from a slot
+    void removeEffect(int slotIndex);
+
+    // Move an effect up or down in the chain
+    void moveEffect(int slotIndex, int direction); // -1 = up, +1 = down
+
+    // Get chain info for UI
+    struct SlotInfo {
+        int slotIndex;
+        std::string typeId;
+        std::string displayName;
+        bool active;
+    };
+    std::vector<SlotInfo> getActiveSlots() const;
+
+    // Editor state
     int getSelectedEditorIndex() const { return selectedEditorIndex; }
     void setSelectedEditorIndex(int index) { selectedEditorIndex = index; }
-    std::vector<std::string> getActiveEffectNames() const { 
-        auto names = dspChain.getModuleNames();
-        names.erase(std::remove(names.begin(), names.end(), "Level Meter"), names.end());
-        return names;
-    }
-    std::vector<std::string> getActiveEffectIds() const {
-        auto ids = dspChain.getModuleIds();
-        ids.erase(std::remove(ids.begin(), ids.end(), "meter"), ids.end());
-        return ids;
-    }
-    
+
     // For LevelMeter UI polling
     eeval::LevelMeterModule* getLevelMeter();
 
-    // FFT Visualization Data (Pass to UI safely)
+    // FFT Visualization Data
     static constexpr int fftOrder = 11;
     static constexpr int fftSize = 1 << fftOrder; // 2048
     std::array<float, fftSize> fifo;
-    std::array<float, fftSize * 2> fftData; // 2x size for complex results
+    std::array<float, fftSize * 2> fftData;
     int fifoIndex = 0;
     std::atomic<bool> nextFFTBlockReady { false };
-    
+
     void pushNextSampleIntoFifo(float sample) noexcept {
         if (fifoIndex == fftSize) {
             if (!nextFFTBlockReady) {
@@ -73,11 +84,17 @@ public:
     void getStateInformation(juce::MemoryBlock& destData) override;
     void setStateInformation(const void* data, int sizeInBytes) override;
 
+    // Access to chain for UI queries
+    eeval::EffectChain& getChain() { return dspChain; }
+
 private:
     eeval::EffectChain dspChain;
     eeval::LevelMeterModule* levelMeterPtr = nullptr;
-    int selectedEditorIndex = 0; // Centralized UI state
-    
+    int selectedEditorIndex = 0;
+
+    // Rebuild the DSP chain from current slot type parameters
+    void rebuildChainFromSlotTypes();
+
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EasyEffectsAudioProcessor)

@@ -1,6 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
-#include "ModuleDescriptors.h"
+#include "../dsp/EffectRegistry.h"
 #include "Theme.h"
 
 namespace eeval {
@@ -8,21 +8,27 @@ namespace ui {
 
 class GenericModuleEditor : public juce::Component {
 public:
-    GenericModuleEditor(juce::AudioProcessorValueTreeState& stateToUse, const std::string& modId, const std::string& modName)
-        : apvts(stateToUse), moduleId(modId), moduleName(modName)
+    GenericModuleEditor(juce::AudioProcessorValueTreeState& stateToUse,
+                        int slotIdx,
+                        const std::string& typeId,
+                        const std::string& dispName)
+        : apvts(stateToUse), slotIndex(slotIdx), effectTypeId(typeId), displayName(dispName)
     {
-        // Standard Parameters
-        auto params = ModuleDescriptors::getParametersForModule(moduleId);
+        std::string prefix = "slot" + std::to_string(slotIndex) + "." + effectTypeId;
 
-        for (const auto& pdesc : params) {
+        // Get parameter descriptors from the registry
+        const auto* desc = EffectRegistry::findType(effectTypeId);
+        if (!desc) return;
+
+        for (const auto& pdesc : desc->params) {
+            std::string fullId = prefix + "." + pdesc.suffix;
+
             juce::Slider* slider = nullptr;
 
-            if (moduleId == "eq") {
-                // EQ uses vertical sliders like the GTK app
+            if (effectTypeId == "eq" && pdesc.suffix.find("gain") != std::string::npos) {
                 slider = new juce::Slider(juce::Slider::LinearVertical, juce::Slider::TextBoxBelow);
                 slider->setTextBoxStyle(juce::Slider::TextBoxBelow, false, 55, 20);
             } else {
-                // Other modules: horizontal slider with value readout on right
                 slider = new juce::Slider(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
                 slider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 28);
             }
@@ -31,7 +37,7 @@ public:
             slider->setColour(juce::Slider::textBoxOutlineColourId, theme::borderSubtle);
             slider->setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xFF1A1A1A));
 
-            auto* label = new juce::Label(pdesc.id + "_label", pdesc.label);
+            auto* label = new juce::Label(fullId + "_label", pdesc.label);
             label->setJustificationType(juce::Justification::centredLeft);
             label->setColour(juce::Label::textColourId, theme::textSecondary);
 
@@ -40,26 +46,29 @@ public:
             sliders.add(slider);
             labels.add(label);
 
-            attachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, pdesc.id, *slider));
+            attachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(
+                apvts, fullId, *slider));
         }
 
-        // Special exception for Choice parameters (e.g. Filter Type)
-        if (moduleId == "filter") {
+        // Choice parameters (e.g., filter type)
+        for (const auto& cdesc : desc->choices) {
+            std::string fullId = prefix + "." + cdesc.suffix;
+
             auto* combo = new juce::ComboBox();
-            combo->addItem("Highpass", 1);
-            combo->addItem("Lowpass", 2);
+            for (int i = 0; i < cdesc.choices.size(); ++i)
+                combo->addItem(cdesc.choices[i], i + 1);
             combo->setJustificationType(juce::Justification::centred);
             addAndMakeVisible(combo);
-            filterTypeCombo.reset(combo);
 
-            auto* label = new juce::Label("filter.type_label", "Type");
+            auto* label = new juce::Label(fullId + "_label", cdesc.label);
             label->setJustificationType(juce::Justification::centredLeft);
             label->setColour(juce::Label::textColourId, theme::textSecondary);
             addAndMakeVisible(label);
-            filterTypeLabel.reset(label);
 
-            filterTypeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
-                apvts, "filter.type", *combo);
+            choiceLabels.add(label);
+            comboBoxes.add(combo);
+            comboAttachments.add(
+                new juce::AudioProcessorValueTreeState::ComboBoxAttachment(apvts, fullId, *combo));
         }
     }
 
@@ -72,32 +81,32 @@ public:
         auto titleArea = area.removeFromTop(40);
         g.setColour(theme::textPrimary);
         g.setFont(18.0f);
-        g.drawText(moduleName, titleArea.reduced(20, 0), juce::Justification::centredLeft, true);
+        g.drawText(displayName, titleArea.reduced(20, 0), juce::Justification::centredLeft, true);
 
-        // Draw "Controls" card background
+        // "Controls" card
         auto cardArea = area.reduced(15, 5);
         g.setColour(theme::bgCard);
         g.fillRoundedRectangle(cardArea.toFloat(), 8.0f);
         g.setColour(theme::borderSubtle);
         g.drawRoundedRectangle(cardArea.toFloat(), 8.0f, 1.0f);
-
-        // "Controls" label at top of card
         g.setColour(theme::textPrimary);
         g.setFont(14.0f);
-        g.drawText("Controls", cardArea.getX() + 15, cardArea.getY() + 8, 100, 20, juce::Justification::centredLeft);
+        g.drawText("Controls", cardArea.getX() + 15, cardArea.getY() + 8, 100, 20,
+                   juce::Justification::centredLeft);
     }
 
     void resized() override {
         auto area = getLocalBounds();
-        area.removeFromTop(40); // title
+        area.removeFromTop(40);
         auto cardArea = area.reduced(15, 5);
-        auto innerArea = cardArea.reduced(15, 35); // padding inside card, skip "Controls" label
+        auto innerArea = cardArea.reduced(15, 35);
 
         int x = innerArea.getX();
         int y = innerArea.getY();
 
-        if (moduleId == "eq") {
-            // Horizontal layout for EQ sliders
+        bool isEq = (effectTypeId == "eq");
+
+        if (isEq) {
             int itemWidth = 55;
             int itemHeight = juce::jmin(innerArea.getHeight() - 25, 250);
             for (int i = 0; i < sliders.size(); ++i) {
@@ -106,18 +115,18 @@ public:
                 x += itemWidth + 8;
             }
         } else {
-            // Vertical list layout for standard modules (like GTK Controls panel)
             int rowHeight = 35;
             int labelWidth = 120;
             int sliderWidth = innerArea.getWidth() - labelWidth - 10;
 
-            // Filter type combo first
-            if (filterTypeCombo != nullptr && filterTypeLabel != nullptr) {
-                filterTypeLabel->setBounds(x, y, labelWidth, rowHeight);
-                filterTypeCombo->setBounds(x + labelWidth + 10, y, juce::jmin(sliderWidth, 200), rowHeight);
+            // Choice params first
+            for (int i = 0; i < comboBoxes.size(); ++i) {
+                choiceLabels[i]->setBounds(x, y, labelWidth, rowHeight);
+                comboBoxes[i]->setBounds(x + labelWidth + 10, y, juce::jmin(sliderWidth, 200), rowHeight);
                 y += rowHeight + 8;
             }
 
+            // Float params
             for (int i = 0; i < sliders.size(); ++i) {
                 labels[i]->setBounds(x, y, labelWidth, rowHeight);
                 sliders[i]->setBounds(x + labelWidth + 10, y, sliderWidth, rowHeight);
@@ -128,16 +137,17 @@ public:
 
 private:
     juce::AudioProcessorValueTreeState& apvts;
-    std::string moduleId;
-    std::string moduleName;
+    int slotIndex;
+    std::string effectTypeId;
+    std::string displayName;
 
     juce::OwnedArray<juce::Slider> sliders;
     juce::OwnedArray<juce::Label> labels;
     juce::OwnedArray<juce::AudioProcessorValueTreeState::SliderAttachment> attachments;
 
-    std::unique_ptr<juce::ComboBox> filterTypeCombo;
-    std::unique_ptr<juce::Label> filterTypeLabel;
-    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> filterTypeAttachment;
+    juce::OwnedArray<juce::ComboBox> comboBoxes;
+    juce::OwnedArray<juce::Label> choiceLabels;
+    juce::OwnedArray<juce::AudioProcessorValueTreeState::ComboBoxAttachment> comboAttachments;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GenericModuleEditor)
 };

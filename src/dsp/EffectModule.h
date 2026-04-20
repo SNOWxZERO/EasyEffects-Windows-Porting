@@ -56,14 +56,24 @@ public:
     void setDryWetMix(float mix) { dryWetMix = juce::jlimit(0.0f, 1.0f, mix); }
     float getDryWetMix() const { return dryWetMix; }
 
-    // Helper: builds a parameter ID string as "<moduleId>.<paramName>"
+    // Slot-based parameter prefix (e.g., "slot3.compressor")
+    // When set, paramId() uses this instead of getModuleId()
+    void setParamPrefix(const std::string& prefix) { slotParamPrefix = prefix; }
+    const std::string& getParamPrefix() const { return slotParamPrefix; }
+
+    // Helper: builds a parameter ID string
+    // With prefix set: "slot3.compressor.threshold"
+    // Without prefix (legacy): "compressor.threshold"
     std::string paramId(const std::string& paramName) const {
+        if (!slotParamPrefix.empty())
+            return slotParamPrefix + "." + paramName;
         return getModuleId() + "." + paramName;
     }
 
 protected:
     bool bypassed = false;
     float dryWetMix = 1.0f; // 1.0 = fully wet (effect applied)
+    std::string slotParamPrefix; // e.g., "slot3.compressor" — empty = legacy mode
 
     // Pre-allocated in prepare() for dry/wet blending
     juce::AudioBuffer<float> dryBuffer;

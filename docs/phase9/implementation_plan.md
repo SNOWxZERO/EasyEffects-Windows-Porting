@@ -1,163 +1,101 @@
 # Phase 9: Dynamic Effect Chain & Missing Effects
 
-## Overview
-
-This phase transforms EasyEffects Windows from a **fixed effect chain** into a **dynamic, user-controlled chain** matching the original Linux app's behavior, and implements all missing audio effects.
+## Status: APPROVED — Phase 9A In Progress
 
 ---
 
-## Part A: Dynamic Effect Chain Architecture
+## Approved Decisions
 
-### Current Problem
-All 13 effects are hardcoded in `PluginProcessor.cpp` constructor. All parameters for all effects are registered at startup. Users cannot add, remove, or reorder effects.
-
-### Proposed Architecture
-
-#### A1. Effect Registry (Factory Pattern)
-Create an `EffectRegistry` that maps effect type IDs to factory lambdas:
-
-**[NEW] `src/dsp/EffectRegistry.h`**
-- Static registry mapping string IDs → factory functions
-- Each factory returns `std::unique_ptr<EffectModule>`
-- Each factory also returns parameter descriptors for dynamic APVTS registration
-- Provides `getAvailableEffects()` for the "Add Effect" UI
-
-#### A2. Dynamic EffectChain
-**[MODIFY] `src/dsp/EffectChain.h/.cpp`**
-- Add `insertModule(int position, std::unique_ptr<EffectModule>)` 
-- Add `removeModule(int position)`
-- Add `moveModule(int fromIndex, int toIndex)` for reordering
-- Add `getModule(int index)` accessor
-- Thread-safe swapping using double-buffering or lock-free queue
-
-#### A3. Dynamic Parameter Management
-**[MODIFY] `src/PluginProcessor.h/.cpp`**
-
-> [!WARNING]
-> **Major architectural constraint**: JUCE's `AudioProcessorValueTreeState` (APVTS) does **not** support adding/removing parameters after construction. This is a fundamental limitation.
-
-**Solution options:**
-1. **Pre-register all possible parameters** (current approach, extended) — Register parameters for N instances of each effect type (e.g., up to 2 compressors, 2 EQs). Simple but wastes memory.
-2. **Use raw ValueTree** instead of APVTS for dynamic modules — More flexible but loses slider attachment convenience.  
-3. **Rebuild processor on chain change** — Destroys and recreates the processor. Not viable for real-time audio.
-
-**Recommended: Option 1 (Pre-register with instance slots)**
-- Register parameters for up to 16 effect slots: `slot0.compressor.threshold`, `slot1.eq.band0.gain`, etc.
-- Each slot maps to a position in the chain
-- When user adds "Compressor" to slot 3, the UI reads from `slot3.compressor.*`
-
-#### A4. UI Changes
-**[MODIFY] `src/PluginEditor.h/.cpp`**
-- Add "+ Add Effect" button above the sidebar (like original app)
-- Add "Remove" option per sidebar row (right-click or button)
-- Add up/down arrows for reordering
-- Sidebar now shows only active effects, not all possible ones
-
-**[MODIFY] `src/ui/SidebarRowCustomComponent.h`**
-- Add reorder handle (drag or up/down arrows)
-- Add remove/close button
+| Decision | Answer |
+|----------|--------|
+| Max chain length | **16 slots** |
+| Multiple instances | **Allowed** (e.g., two compressors) |
+| External libraries | **Git submodules** (not FetchContent) |
+| Priority | **Phase 9A first** (dynamic chain before new effects) |
 
 ---
 
-## Part B: Missing Effects Inventory
+## Part A: Dynamic Effect Chain Architecture (Phase 9A)
 
-### Comparison: Original vs. Our Implementation
+### Architectural Requirements
 
-| # | Effect | Original Dependency | Our Status | Implementation Strategy |
-|---|--------|-------------------|------------|------------------------|
-| 1 | Auto Gain | libebur128 | ❌ Missing | Use JUCE loudness measurement + gain adjustment |
-| 2 | Bass Enhancer | Built-in | ✅ Done | — |
-| 3 | Bass Loudness | MDA plugin | ❌ Missing | Port MDA bass loudness algorithm (simple equal-loudness curve) |
-| 4 | Compressor | Built-in | ✅ Done | — |
-| 5 | Convolver | Zita-convolver | ✅ Done | — |
-| 6 | Crossfeed | libbs2b | ❌ Missing | Implement Bauer crossfeed filter (simple IIR) |
-| 7 | Crusher | Built-in | ❌ Missing | Bit-depth reduction + sample rate decimation (pure DSP, no deps) |
-| 8 | Crystalizer | Built-in | ❌ Missing | Harmonic enhancement via difference amplification (pure DSP) |
-| 9 | De-esser | Built-in | ✅ Done | — |
-| 10 | Delay | Built-in | ✅ Done | — |
-| 11 | Deep Noise Remover | DeepFilterNet | ❌ Missing | **Defer** — requires ML inference runtime (ONNX/TensorRT) |
-| 12 | Echo Canceller | SpeexDSP | ❌ Missing | **Defer** — requires speexdsp library, complex AEC algorithm |
-| 13 | Equalizer | Built-in | ✅ Done | — |
-| 14 | Exciter | Built-in | ✅ Done | — |
-| 15 | Expander | Built-in | ❌ Missing | Inverse compressor using JUCE `dsp::Compressor` with ratio < 1 |
-| 16 | Filter | Built-in | ✅ Done | — |
-| 17 | Gate | Built-in | ✅ Done | — |
-| 18 | Level Meter | libebur128 | ✅ Done | — |
-| 19 | Limiter | Built-in | ✅ Done | — |
-| 20 | Loudness | libebur128 | ❌ Missing | JUCE-based LUFS measurement + gain compensation |
-| 21 | Maximizer | ZamAudio | ❌ Missing | Look-ahead limiter + makeup gain (pure DSP) |
-| 22 | Multiband Compressor | LSP plugins | ❌ Missing | Linkwitz-Riley crossover + per-band JUCE compressors |
-| 23 | Multiband Gate | LSP plugins | ❌ Missing | Linkwitz-Riley crossover + per-band gates |
-| 24 | Noise Reduction | RNNoise | ❌ Missing | Bundle RNNoise C library (MIT license, ~100KB) |
-| 25 | Pitch Shift | SoundTouch | ❌ Missing | Bundle SoundTouch library (LGPL, well-supported on Windows) |
-| 26 | Reverberation | Built-in | ✅ Done | — |
-| 27 | Speech Processor | SpeexDSP | ❌ Missing | **Defer** — AGC + noise suppression from speexdsp |
-| 28 | Stereo Tools | Built-in | ❌ Missing | Mid/Side encoding, stereo width, balance (pure DSP) |
+1. **Slot System**: Each of the 16 slots has a `slotX.type` parameter identifying which effect is active. DSP and UI only read parameters relevant to the active type.
 
-### Summary
-- **Already implemented:** 13/28
-- **Pure DSP (no dependencies):** 8 more (Crusher, Crystalizer, Crossfeed, Expander, Stereo Tools, Maximizer, Bass Loudness, Loudness/Auto Gain)
-- **Need external libraries:** 3 (RNNoise, SoundTouch, Multiband needs Linkwitz-Riley)
-- **Deferred (complex ML/AEC):** 3 (Deep Noise Remover, Echo Canceller, Speech Processor)
+2. **Real-Time Safety**: No allocation or deletion in the audio thread. Module creation/removal on UI thread only. Double-buffered chain swap for thread safety.
 
----
+3. **EffectRegistry**: Central system containing effect type ID, display name, parameter descriptors, and factory function. Drives DSP creation, UI generation, and preset reconstruction.
 
-## Part C: Implementation Order
+4. **Preset System**: Must serialize chain structure (which effect in which slot) alongside APVTS parameter state.
 
-### Phase 9A: Dynamic Chain Infrastructure
-1. Create `EffectRegistry` with factory pattern
-2. Pre-register parameter slots (16 slots)
-3. Modify `EffectChain` for insert/remove/reorder
-4. Add "+ Add Effect" UI and remove buttons
-5. Serialize active chain to presets
+5. **Reordering**: Operates at the slot level — swap slot indices and associated module instances. Do NOT move parameters.
 
-### Phase 9B: Pure DSP Effects (No Dependencies)
-Priority order (most useful for voice/music first):
-1. **Stereo Tools** — Simple and universally useful
-2. **Expander** — Inverse compressor, almost trivial
-3. **Crusher** — Bit crush + decimation, fun effect
-4. **Crystalizer** — Harmonic enhancement
-5. **Crossfeed** — Bauer stereophonic filter for headphones
-6. **Maximizer** — Look-ahead limiter with makeup gain
-7. **Bass Loudness** — Equal-loudness contour filter
-8. **Loudness (Auto Gain)** — LUFS-based automatic gain
+6. **UI Requirements**: Add effect ("+"), remove effect, reorder (up/down buttons), bypass toggle per slot, display effect type clearly.
 
-### Phase 9C: External Library Effects
-1. **RNNoise** (Noise Reduction) — Bundle the C library directly
-2. **SoundTouch** (Pitch Shift) — Link via CMake `FetchContent`
-3. **Multiband Compressor** — Build Linkwitz-Riley crossover from JUCE IIR filters
-4. **Multiband Gate** — Same crossover infrastructure
+### Slot Parameter Design
 
-### Phase 9D: Deferred (Future)
-- Deep Noise Remover (needs ONNX inference)
-- Echo Canceller (needs full AEC pipeline)
-- Speech Processor (AGC + VAD + noise suppression)
+Each slot pre-registers parameters for ALL effect types:
+```
+slotX.type    = choice (none, gate, compressor, eq, ...)
+slotX.bypass  = bool
+slotX.mix     = float [0, 100]
+
+// Per-type parameters (only active type is read by DSP)
+slotX.gate.threshold, slotX.gate.ratio, slotX.gate.attack, slotX.gate.release
+slotX.compressor.threshold, slotX.compressor.ratio, ...
+slotX.eq.band0.gain, slotX.eq.band0.freq, slotX.eq.band0.q, ...
+... (all effect types)
+```
+
+Total: ~16 slots × ~95 params = ~1520 parameters. Negligible memory cost (~30KB).
+
+### New/Modified Files
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `src/dsp/EffectRegistry.h` | NEW | Factory + descriptors for all effect types |
+| `src/dsp/EffectChain.h/.cpp` | MODIFY | Thread-safe insert/remove/reorder/swap |
+| `src/PluginProcessor.h/.cpp` | MODIFY | Slot-based parameter registration, chain management |
+| `src/PluginEditor.h/.cpp` | MODIFY | "+ Add Effect" button, dynamic sidebar |
+| `src/ui/SidebarRowCustomComponent.h` | MODIFY | Remove button, reorder arrows |
+| `src/ui/ModuleDescriptors.h` | MODIFY | Adapt to slot-based parameter IDs |
+| `src/ui/GenericModuleEditor.h` | MODIFY | Read from slot-prefixed parameters |
 
 ---
 
-## Open Questions
+## Part B: Missing Effects (Phase 9B, 9C, 9D)
 
-> [!IMPORTANT]
-> **Dynamic parameters vs. pre-registration**: Should we pre-register 16 effect slots (simpler but registers ~500 unused parameters), or move to raw `ValueTree` management (more complex but cleaner)?
+### Inventory: 13/28 done, 15 remaining
 
-> [!IMPORTANT]  
-> **Maximum chain length**: How many simultaneous effects should we support? The original app allows unlimited. Suggest capping at 16 for the pre-registration approach.
+**Pure DSP (Phase 9B):** Stereo Tools, Expander, Crusher, Crystalizer, Crossfeed, Maximizer, Bass Loudness, Auto Gain/Loudness
 
-> [!IMPORTANT]
-> **External libraries**: RNNoise and SoundTouch need to be bundled. Should we use CMake `FetchContent` to auto-download them, or vendor them as git submodules?
+**External Libraries (Phase 9C):** RNNoise (Noise Reduction), SoundTouch (Pitch Shift), Multiband Compressor, Multiband Gate — via git submodules
+
+**Deferred (Phase 9D):** Deep Noise Remover, Echo Canceller, Speech Processor
+
+---
+
+## Execution Plan
+
+### Phase 9A — Dynamic Chain (MANDATORY FIRST)
+1. EffectRegistry factory system
+2. Slot-based parameter pre-registration (16 slots)
+3. EffectChain insert/remove/reorder with thread safety
+4. UI: "+ Add Effect" popup menu
+5. UI: Remove and reorder controls per sidebar row
+6. Preset chain serialization
+7. **Stop and stabilize**
+
+### Phase 9B — Pure DSP Effects (one at a time, validate each)
+### Phase 9C — External Libraries (after system stability confirmed)
+### Phase 9D — Deferred
 
 ---
 
 ## Verification Plan
 
-### Phase 9A Verification
+### Phase 9A
 - Add 3 effects via UI, verify DSP chain processes in order
 - Remove middle effect, verify chain re-links correctly
 - Reorder effects, verify processing order changes
 - Save/load preset with custom chain, verify it restores
-
-### Phase 9B Verification  
-- Each new effect: bypass on/off produces audible difference
-- Stereo Tools: verify mono collapse and width expansion
-- Crusher: verify audible bit reduction artifacts
-- Compare output against reference (original EasyEffects with same settings)
+- Verify no audio glitches during chain modifications
