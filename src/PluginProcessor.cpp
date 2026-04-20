@@ -2,6 +2,7 @@
 #include "PluginEditor.h"
 #include "dsp/EffectRegistry.h"
 #include "dsp/LevelMeterModule.h"
+#include <map>
 
 EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
 #ifndef JucePlugin_PreferredChannelConfigurations
@@ -135,24 +136,81 @@ void EasyEffectsAudioProcessor::moveEffect(int slotIndex, int direction) {
     if (dspChain.getSlotTypeId(slotIndex) == "none") return;
     if (direction == 1 && dspChain.getSlotTypeId(targetIndex) == "none") return;
 
-    // Swap both slots — modules need to be recreated with correct prefixes
     std::string typeA = dspChain.getSlotTypeId(slotIndex);
     std::string typeB = dspChain.getSlotTypeId(targetIndex);
 
-    std::string prefixA = eeval::EffectRegistry::slotPrefix(slotIndex);
-    std::string prefixB = eeval::EffectRegistry::slotPrefix(targetIndex);
+    std::string prefixA = eeval::EffectRegistry::slotPrefix(slotIndex);   // e.g. "slot0"
+    std::string prefixB = eeval::EffectRegistry::slotPrefix(targetIndex); // e.g. "slot1"
 
-    // Recreate modules with swapped prefixes
+    // Step 1: Save ALL parameter values from both slots into temp maps
+    std::map<std::string, float> valsA, valsB;
+
+    auto saveSlotParams = [&](const std::string& prefix, const std::string& tid, std::map<std::string, float>& dest) {
+        // Save common params (bypass, mix)
+        auto* bp = parameters.getRawParameterValue(prefix + ".bypass");
+        if (bp) dest["bypass"] = bp->load();
+        auto* mx = parameters.getRawParameterValue(prefix + ".mix");
+        if (mx) dest["mix"] = mx->load();
+
+        // Save type-specific params
+        const auto* desc = eeval::EffectRegistry::findType(tid);
+        if (desc) {
+            for (const auto& p : desc->params) {
+                auto* v = parameters.getRawParameterValue(prefix + "." + tid + "." + p.suffix);
+                if (v) dest[tid + "." + p.suffix] = v->load();
+            }
+            for (const auto& c : desc->choices) {
+                auto* v = parameters.getRawParameterValue(prefix + "." + tid + "." + c.suffix);
+                if (v) dest[tid + "." + c.suffix] = v->load();
+            }
+        }
+    };
+
+    saveSlotParams(prefixA, typeA, valsA);
+    if (typeB != "none")
+        saveSlotParams(prefixB, typeB, valsB);
+
+    // Step 2: Write A's values into B's slot parameters, and vice versa
+    auto writeSlotParams = [&](const std::string& prefix, const std::string& tid, const std::map<std::string, float>& src) {
+        auto setParam = [&](const std::string& id, float val) {
+            auto* param = parameters.getParameter(id);
+            if (param) param->setValueNotifyingHost(param->convertTo0to1(val));
+        };
+
+        if (src.count("bypass")) setParam(prefix + ".bypass", src.at("bypass"));
+        if (src.count("mix")) setParam(prefix + ".mix", src.at("mix"));
+
+        const auto* desc = eeval::EffectRegistry::findType(tid);
+        if (desc) {
+            for (const auto& p : desc->params) {
+                std::string key = tid + "." + p.suffix;
+                if (src.count(key))
+                    setParam(prefix + "." + key, src.at(key));
+            }
+            for (const auto& c : desc->choices) {
+                std::string key = tid + "." + c.suffix;
+                if (src.count(key))
+                    setParam(prefix + "." + key, src.at(key));
+            }
+        }
+    };
+
+    // Write A's saved values into slot B's parameter space
+    writeSlotParams(prefixB, typeA, valsA);
+    // Write B's saved values into slot A's parameter space
+    if (typeB != "none")
+        writeSlotParams(prefixA, typeB, valsB);
+
+    // Step 3: Recreate modules with correct slot prefixes
     auto modA = eeval::EffectRegistry::createModule(typeA, prefixB);
     auto modB = (typeB != "none") ? eeval::EffectRegistry::createModule(typeB, prefixA) : nullptr;
 
-    // TODO: Copy parameter values between slots (for now, just swap types)
     dspChain.setSlotTypeId(slotIndex, typeB);
     dspChain.setSlotTypeId(targetIndex, typeA);
     dspChain.setSlotModule(targetIndex, std::move(modA));
     dspChain.setSlotModule(slotIndex, std::move(modB));
 
-    // Update type choice parameters
+    // Step 4: Update type choice parameters
     auto choices = eeval::EffectRegistry::getTypeChoices();
     auto* tpA = parameters.getParameter(prefixA + ".type");
     auto* tpB = parameters.getParameter(prefixB + ".type");
