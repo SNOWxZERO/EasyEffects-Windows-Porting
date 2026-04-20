@@ -156,38 +156,34 @@ void EasyEffectsAudioProcessorEditor::paintListBoxItem(int, juce::Graphics&, int
 }
 
 juce::Component* EasyEffectsAudioProcessorEditor::refreshComponentForRow(int rowNumber, bool isRowSelected, juce::Component* existing) {
-    if (rowNumber < 0 || rowNumber >= (int)activeSlots.size()) {
-        delete existing;
-        return nullptr;
-    }
+    // Always delete and recreate — after reorder/remove, existing components
+    // have stale slot indices, type IDs, and callbacks
+    delete existing;
 
-    auto* rowComp = dynamic_cast<eeval::ui::SidebarRowCustomComponent*>(existing);
+    if (rowNumber < 0 || rowNumber >= (int)activeSlots.size())
+        return nullptr;
+
     const auto& slot = activeSlots[(size_t)rowNumber];
 
-    if (rowComp == nullptr) {
-        rowComp = new eeval::ui::SidebarRowCustomComponent(
-            audioProcessor.parameters,
-            slot.slotIndex,
-            slot.typeId,
-            slot.displayName,
-            rowNumber,
-            // Remove callback
-            [this](int slotIdx) {
-                audioProcessor.removeEffect(slotIdx);
-                refreshSidebar();
-            },
-            // Move up callback
-            [this](int slotIdx) {
-                audioProcessor.moveEffect(slotIdx, -1);
-                refreshSidebar();
-            },
-            // Move down callback
-            [this](int slotIdx) {
-                audioProcessor.moveEffect(slotIdx, 1);
-                refreshSidebar();
-            }
-        );
-    }
+    auto* rowComp = new eeval::ui::SidebarRowCustomComponent(
+        audioProcessor.parameters,
+        slot.slotIndex,
+        slot.typeId,
+        slot.displayName,
+        rowNumber,
+        [this](int slotIdx) {
+            audioProcessor.removeEffect(slotIdx);
+            refreshSidebar();
+        },
+        [this](int slotIdx) {
+            audioProcessor.moveEffect(slotIdx, -1);
+            refreshSidebar();
+        },
+        [this](int slotIdx) {
+            audioProcessor.moveEffect(slotIdx, 1);
+            refreshSidebar();
+        }
+    );
 
     rowComp->update(isRowSelected);
     return rowComp;
