@@ -15,6 +15,10 @@
 #include "ExpanderModule.h"
 #include "CrusherModule.h"
 #include "MaximizerModule.h"
+#include "CrossfeedModule.h"
+#include "BassLoudnessModule.h"
+#include "CrystalizerModule.h"
+#include "AutoGainModule.h"
 
 namespace eeval {
 
@@ -228,6 +232,57 @@ std::vector<EffectTypeDescriptor> EffectRegistry::buildRegistry() {
             {"soft_clip", "Soft Clip", juce::StringArray{"Off", "On"}, 0}
         },
         [](const std::string& prefix) { return makeSlotModule<MaximizerModule>(prefix, "maximizer"); }
+    });
+
+    // === Crossfeed ===
+    types.push_back({
+        "crossfeed", "Crossfeed",
+        {
+            {"fcut", "Cutoff", "Hz", 300.0f, 2000.0f, 10.0f, 700.0f},
+            {"feed", "Feed",   "dB",   1.0f,   15.0f, 0.1f,   4.5f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<CrossfeedModule>(prefix, "crossfeed"); }
+    });
+
+    // === Bass Loudness ===
+    types.push_back({
+        "bass_loudness", "Bass Loudness",
+        {
+            {"loudness", "Loudness", "dB",  0.0f, 30.0f, 0.1f, 0.0f},
+            {"output",   "Output",   "dB", -36.0f, 36.0f, 0.1f, 0.0f},
+        },
+        {
+            {"link", "Link", juce::StringArray{"Off", "On"}, 0}
+        },
+        [](const std::string& prefix) { return makeSlotModule<BassLoudnessModule>(prefix, "bass_loudness"); }
+    });
+
+    // === Crystalizer ===
+    types.push_back({
+        "crystalizer", "Crystalizer",
+        {
+            {"intensity_low",  "Intensity Low",  "", 0.0f, 16.0f, 0.1f, 0.0f},
+            {"intensity_mid",  "Intensity Mid",  "", 0.0f, 16.0f, 0.1f, 0.0f},
+            {"intensity_high", "Intensity High", "", 0.0f, 16.0f, 0.1f, 0.0f},
+        },
+        {
+            {"adaptive_intensity", "Adaptive", juce::StringArray{"Off", "On"}, 1}
+        },
+        [](const std::string& prefix) { return makeSlotModule<CrystalizerModule>(prefix, "crystalizer"); }
+    });
+
+    // === Auto Gain ===
+    types.push_back({
+        "autogain", "Auto Gain",
+        {
+            {"target",            "Target",            "LUFS", -100.0f, 0.0f,    1.0f, -23.0f},
+            {"attack",            "Attack",            "ms",     10.0f, 2000.0f, 10.0f, 100.0f},
+            {"release",           "Release",           "ms",     10.0f, 5000.0f, 10.0f, 500.0f},
+            {"silence_threshold", "Silence Threshold", "dB",   -100.0f, 0.0f,    1.0f, -60.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<AutoGainModule>(prefix, "autogain"); }
     });
 
     // === Gain ===

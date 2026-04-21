@@ -34,6 +34,7 @@ private:
     } params;
 
     juce::dsp::Limiter<float> limiter;
+    double currentSampleRate = 44100.0;
     
     // Soft clipper
     float applySoftClip(float in);

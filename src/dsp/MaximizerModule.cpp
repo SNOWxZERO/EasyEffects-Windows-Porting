@@ -7,6 +7,7 @@ MaximizerModule::MaximizerModule() {
 }
 
 void MaximizerModule::prepare(const juce::dsp::ProcessSpec& spec) {
+    currentSampleRate = spec.sampleRate;
     limiter.prepare(spec);
     prepareBuffers(spec);
 }
@@ -74,7 +75,7 @@ double MaximizerModule::getLatencySamples() const {
     // juce::dsp::Limiter has a fixed 5ms look-ahead latency
     // We should report this so the host can compensate.
     // Assuming 5ms as per standard juce implementation of Limiter.
-    return 0.005 * limiter.getSampleRate();
+    return 0.005 * currentSampleRate;
 }
 
 } // namespace eeval

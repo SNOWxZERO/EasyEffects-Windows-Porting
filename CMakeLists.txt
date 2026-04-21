@@ -47,6 +47,10 @@ target_sources(EasyEffects
     src/dsp/ExpanderModule.cpp
     src/dsp/CrusherModule.cpp
     src/dsp/MaximizerModule.cpp
+    src/dsp/CrossfeedModule.cpp
+    src/dsp/BassLoudnessModule.cpp
+    src/dsp/CrystalizerModule.cpp
+    src/dsp/AutoGainModule.cpp
 )
 
 # Link JUCE modules
