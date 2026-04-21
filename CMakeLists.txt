@@ -43,6 +43,10 @@ target_sources(EasyEffects
     src/dsp/DeesserModule.cpp
     src/dsp/ConvolverModule.cpp
     src/dsp/LevelMeterModule.cpp
+    src/dsp/StereoToolsModule.cpp
+    src/dsp/ExpanderModule.cpp
+    src/dsp/CrusherModule.cpp
+    src/dsp/MaximizerModule.cpp
 )
 
 # Link JUCE modules

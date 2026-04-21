@@ -24,6 +24,9 @@ public:
     // Returns a human-readable display name
     virtual const std::string& getName() const = 0;
 
+    // Returns the latency in samples (if any)
+    virtual double getLatencySamples() const { return 0.0; }
+
     // Main process entry point — handles bypass and dry/wet mix
     void process(juce::AudioBuffer<float>& buffer)
     {

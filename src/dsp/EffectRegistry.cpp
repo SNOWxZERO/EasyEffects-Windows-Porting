@@ -11,6 +11,10 @@
 #include "BassEnhancerModule.h"
 #include "DeesserModule.h"
 #include "ConvolverModule.h"
+#include "StereoToolsModule.h"
+#include "ExpanderModule.h"
+#include "CrusherModule.h"
+#include "MaximizerModule.h"
 
 namespace eeval {
 
@@ -159,6 +163,71 @@ std::vector<EffectTypeDescriptor> EffectRegistry::buildRegistry() {
         },
         {},
         [](const std::string& prefix) { return makeSlotModule<LimiterModule>(prefix, "limiter"); }
+    });
+
+    // === Stereo Tools ===
+    types.push_back({
+        "stereotools", "Stereo Tools",
+        {
+            {"balance_in",      "Balance In",    "",   -1.0f,  1.0f, 0.01f, 0.0f},
+            {"balance_out",     "Balance Out",   "",   -1.0f,  1.0f, 0.01f, 0.0f},
+            {"side_level",      "Side Level",    "dB", -36.0f, 36.0f, 0.1f, 0.0f},
+            {"side_balance",    "Side Balance",  "",   -1.0f,  1.0f, 0.01f, 0.0f},
+            {"middle_level",    "Mid Level",     "dB", -36.0f, 36.0f, 0.1f, 0.0f},
+            {"middle_panorama", "Mid Panorama",  "",   -1.0f,  1.0f, 0.01f, 0.0f},
+            {"stereo_base",     "Stereo Base",   "",   -1.0f,  1.0f, 0.01f, 0.0f},
+            {"delay",           "Delay",         "ms", -20.0f, 20.0f, 0.1f, 0.0f},
+            {"stereo_phase",    "Stereo Phase",  "deg", 0.0f,  360.0f, 1.0f, 0.0f},
+        },
+        {
+            {"mode",     "Mode",     juce::StringArray{"LR > LR", "LR > MS", "MS > LR", "LR > LL", "LR > RR", "LR > L+R", "LR > RL"}, 0},
+            {"mute_l",   "Mute L",   juce::StringArray{"Off", "On"}, 0},
+            {"mute_r",   "Mute R",   juce::StringArray{"Off", "On"}, 0},
+            {"invert_l", "Invert L", juce::StringArray{"Off", "On"}, 0},
+            {"invert_r", "Invert R", juce::StringArray{"Off", "On"}, 0}
+        },
+        [](const std::string& prefix) { return makeSlotModule<StereoToolsModule>(prefix, "stereotools"); }
+    });
+
+    // === Expander ===
+    types.push_back({
+        "expander", "Expander",
+        {
+            {"threshold",   "Threshold",   "dB", -60.0f,  0.0f,  0.1f, -40.0f},
+            {"ratio",       "Ratio",       ":1",  1.0f,  20.0f,  0.1f,   2.0f},
+            {"attack",      "Attack",      "ms",  0.1f, 100.0f,  0.1f,  10.0f},
+            {"release",     "Release",     "ms", 10.0f, 1000.0f, 1.0f, 100.0f},
+            {"knee",        "Knee",        "dB",  0.0f,  24.0f,  0.1f,   0.0f},
+            {"makeup_gain", "Makeup Gain", "dB", -24.0f, 24.0f,  0.1f,   0.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<ExpanderModule>(prefix, "expander"); }
+    });
+
+    // === Crusher ===
+    types.push_back({
+        "crusher", "Crusher",
+        {
+            {"bits",    "Bit Depth", "",    1.0f,  16.0f, 0.1f,   16.0f},
+            {"samples", "Samples",   "x",   1.0f, 100.0f, 1.0f,    1.0f},
+            {"jitter",  "Jitter",    "",    0.0f,   1.0f, 0.01f,   0.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<CrusherModule>(prefix, "crusher"); }
+    });
+
+    // === Maximizer ===
+    types.push_back({
+        "maximizer", "Maximizer",
+        {
+            {"threshold", "Threshold", "dB", -60.0f, 0.0f, 0.1f, 0.0f},
+            {"ceiling",   "Ceiling",   "dB", -20.0f, 0.0f, 0.1f, 0.0f},
+            {"release",   "Release",   "ms",   1.0f, 1000.0f, 1.0f, 10.0f},
+        },
+        {
+            {"soft_clip", "Soft Clip", juce::StringArray{"Off", "On"}, 0}
+        },
+        [](const std::string& prefix) { return makeSlotModule<MaximizerModule>(prefix, "maximizer"); }
     });
 
     // === Gain ===
