@@ -22,37 +22,42 @@ void StereoToolsModule::reset() {
 }
 
 void StereoToolsModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.balanceIn = apvts.getRawParameterValue(paramId("balance_in"))->load();
-    params.balanceOut = apvts.getRawParameterValue(paramId("balance_out"))->load();
-    params.mode = static_cast<Mode>(static_cast<int>(apvts.getRawParameterValue(paramId("mode"))->load()));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.balanceIn = loadFloat(paramId("balance_in"), 0.0f);
+    params.balanceOut = loadFloat(paramId("balance_out"), 0.0f);
+    params.mode = static_cast<Mode>(static_cast<int>(loadFloat(paramId("mode"), 0.0f)));
     
-    float sLevelDb = apvts.getRawParameterValue(paramId("side_level"))->load();
+    float sLevelDb = loadFloat(paramId("side_level"), 0.0f);
     params.sideLevel = juce::Decibels::decibelsToGain(sLevelDb);
     smoothedSideLevel.setTargetValue(params.sideLevel);
 
-    params.sideBalance = apvts.getRawParameterValue(paramId("side_balance"))->load();
+    params.sideBalance = loadFloat(paramId("side_balance"), 0.0f);
 
-    float mLevelDb = apvts.getRawParameterValue(paramId("middle_level"))->load();
+    float mLevelDb = loadFloat(paramId("middle_level"), 0.0f);
     params.middleLevel = juce::Decibels::decibelsToGain(mLevelDb);
     smoothedMidLevel.setTargetValue(params.middleLevel);
 
-    params.middlePanorama = apvts.getRawParameterValue(paramId("middle_panorama"))->load();
+    params.middlePanorama = loadFloat(paramId("middle_panorama"), 0.0f);
     
-    float sb = apvts.getRawParameterValue(paramId("stereo_base"))->load();
+    float sb = loadFloat(paramId("stereo_base"), 0.0f);
     // stereoBase -1 to 1 maps to width 0 to 2
     params.stereoBase = sb + 1.0f;
     smoothedWidth.setTargetValue(params.stereoBase);
 
-    params.delayMs = apvts.getRawParameterValue(paramId("delay"))->load();
-    params.stereoPhase = apvts.getRawParameterValue(paramId("stereo_phase"))->load();
+    params.delayMs = loadFloat(paramId("delay"), 0.0f);
+    params.stereoPhase = loadFloat(paramId("stereo_phase"), 0.0f);
     
-    params.muteL = apvts.getRawParameterValue(paramId("mute_l"))->load() > 0.5f;
-    params.muteR = apvts.getRawParameterValue(paramId("mute_r"))->load() > 0.5f;
-    params.invertL = apvts.getRawParameterValue(paramId("invert_l"))->load() > 0.5f;
-    params.invertR = apvts.getRawParameterValue(paramId("invert_r"))->load() > 0.5f;
+    params.muteL = loadFloat(paramId("mute_l"), 0.0f) > 0.5f;
+    params.muteR = loadFloat(paramId("mute_r"), 0.0f) > 0.5f;
+    params.invertL = loadFloat(paramId("invert_l"), 0.0f) > 0.5f;
+    params.invertR = loadFloat(paramId("invert_r"), 0.0f) > 0.5f;
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 void StereoToolsModule::processInternal(juce::AudioBuffer<float>& buffer) {

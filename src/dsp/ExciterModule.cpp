@@ -67,22 +67,20 @@ void ExciterModule::reset() {
 }
 
 void ExciterModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto amtParam = apvts.getRawParameterValue(paramId("amount"));
-    auto harmParam = apvts.getRawParameterValue(paramId("harmonics"));
-    auto cutParam = apvts.getRawParameterValue(paramId("cutoff"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    amount = loadFloat(paramId("amount"), 0.5f);
+    harmonics = loadFloat(paramId("harmonics"), 0.1f);
+    float cutoff = loadFloat(paramId("cutoff"), 3000.0f);
     
-    if (amtParam != nullptr) amount = amtParam->load();
-    if (harmParam != nullptr) harmonics = harmParam->load();
-    if (cutParam != nullptr) {
-        lpFilter.setCutoffFrequency(cutParam->load());
-        hpFilter.setCutoffFrequency(cutParam->load());
-    }
-    
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    lpFilter.setCutoffFrequency(cutoff);
+    hpFilter.setCutoffFrequency(cutoff);
+
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& ExciterModule::getModuleId() const { return moduleId; }

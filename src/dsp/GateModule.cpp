@@ -20,21 +20,18 @@ void GateModule::reset() {
 }
 
 void GateModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto thresh = apvts.getRawParameterValue(paramId("threshold"));
-    auto ratio = apvts.getRawParameterValue(paramId("ratio"));
-    auto attack = apvts.getRawParameterValue(paramId("attack"));
-    auto release = apvts.getRawParameterValue(paramId("release"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (thresh != nullptr) gateNode.setThreshold(thresh->load());
-    if (ratio != nullptr) gateNode.setRatio(ratio->load());
-    if (attack != nullptr) gateNode.setAttack(attack->load());
-    if (release != nullptr) gateNode.setRelease(release->load());
+    gateNode.setThreshold(loadFloat(paramId("threshold"), -40.0f));
+    gateNode.setRatio(loadFloat(paramId("ratio"), 10.0f));
+    gateNode.setAttack(loadFloat(paramId("attack"), 1.0f));
+    gateNode.setRelease(loadFloat(paramId("release"), 100.0f));
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& GateModule::getModuleId() const { return moduleId; }

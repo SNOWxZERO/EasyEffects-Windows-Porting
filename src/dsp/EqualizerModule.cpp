@@ -68,22 +68,22 @@ void EqualizerModule::updateCoefficients(int bandIndex, float gain, float freq, 
 }
 
 void EqualizerModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
     for (int i = 0; i < NUM_BANDS; ++i) {
         auto bandPrefix = paramId("band" + std::to_string(i));
-        auto gain = apvts.getRawParameterValue(bandPrefix + ".gain");
-        auto freq = apvts.getRawParameterValue(bandPrefix + ".freq");
-        auto q = apvts.getRawParameterValue(bandPrefix + ".q");
+        float gain = loadFloat(bandPrefix + ".gain", 0.0f);
+        float freq = loadFloat(bandPrefix + ".freq", 1000.0f);
+        float q = loadFloat(bandPrefix + ".q", 0.707f);
 
-        if (gain != nullptr && freq != nullptr && q != nullptr) {
-            updateCoefficients(i, gain->load(), freq->load(), q->load());
-        }
+        updateCoefficients(i, gain, freq, q);
     }
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& EqualizerModule::getModuleId() const { return moduleId; }

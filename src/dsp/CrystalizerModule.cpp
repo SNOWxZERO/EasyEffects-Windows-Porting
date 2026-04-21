@@ -36,13 +36,18 @@ void CrystalizerModule::reset() {
 }
 
 void CrystalizerModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.intensityLow = apvts.getRawParameterValue(paramId("intensity_low"))->load();
-    params.intensityMid = apvts.getRawParameterValue(paramId("intensity_mid"))->load();
-    params.intensityHigh = apvts.getRawParameterValue(paramId("intensity_high"))->load();
-    params.adaptiveIntensity = apvts.getRawParameterValue(paramId("adaptive_intensity"))->load() > 0.5f;
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    params.intensityLow = loadFloat(paramId("intensity_low"), 0.0f);
+    params.intensityMid = loadFloat(paramId("intensity_mid"), 0.0f);
+    params.intensityHigh = loadFloat(paramId("intensity_high"), 0.0f);
+    params.adaptiveIntensity = loadFloat(paramId("adaptive_intensity"), 1.0f) > 0.5f;
+
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 float CrystalizerModule::processBand(int channel, int band, float x_n, float intensity) {

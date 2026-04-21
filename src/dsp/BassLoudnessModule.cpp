@@ -25,9 +25,14 @@ void BassLoudnessModule::reset() {
 }
 
 void BassLoudnessModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.loudness = apvts.getRawParameterValue(paramId("loudness"))->load();
-    params.output = apvts.getRawParameterValue(paramId("output"))->load();
-    params.link = apvts.getRawParameterValue(paramId("link"))->load() > 0.5f;
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.loudness = loadFloat(paramId("loudness"), 0.0f);
+    params.output = loadFloat(paramId("output"), 0.0f);
+    params.link = loadFloat(paramId("link"), 0.0f) > 0.5f;
 
     // In the MDA version, 'loudness' is often a drive parameter.
     // We update the filters when loudness changes.
@@ -35,8 +40,8 @@ void BassLoudnessModule::updateParameters(juce::AudioProcessorValueTreeState& ap
     
     smoothedOutputGain.setTargetValue(juce::Decibels::decibelsToGain(params.output));
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 void BassLoudnessModule::updateFilters() {

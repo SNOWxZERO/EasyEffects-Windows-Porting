@@ -58,22 +58,20 @@ void DeesserModule::reset() {
 }
 
 void DeesserModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto threshParam = apvts.getRawParameterValue(paramId("threshold"));
-    auto ratioParam = apvts.getRawParameterValue(paramId("ratio"));
-    auto freqParam = apvts.getRawParameterValue(paramId("frequency"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    compressorNode.setThreshold(loadFloat(paramId("threshold"), -10.0f));
+    compressorNode.setRatio(loadFloat(paramId("ratio"), 4.0f));
     
-    if (threshParam != nullptr) compressorNode.setThreshold(threshParam->load());
-    if (ratioParam != nullptr) compressorNode.setRatio(ratioParam->load());
-    if (freqParam != nullptr) {
-        lpFilter.setCutoffFrequency(freqParam->load());
-        hpFilter.setCutoffFrequency(freqParam->load());
-    }
-    
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    float freq = loadFloat(paramId("frequency"), 6000.0f);
+    lpFilter.setCutoffFrequency(freq);
+    hpFilter.setCutoffFrequency(freq);
+
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& DeesserModule::getModuleId() const { return moduleId; }

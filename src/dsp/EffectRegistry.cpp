@@ -26,6 +26,7 @@ namespace eeval {
 template<typename T>
 static std::unique_ptr<EffectModule> makeSlotModule(const std::string& slotPrefix, const std::string& typeId) {
     auto mod = std::make_unique<T>();
+    mod->setSlotPrefix(slotPrefix);
     mod->setParamPrefix(slotPrefix + "." + typeId);
     return mod;
 }

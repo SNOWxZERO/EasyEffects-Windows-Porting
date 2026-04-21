@@ -18,24 +18,21 @@ void ReverbModule::processInternal(juce::AudioBuffer<float>& buffer) {
 void ReverbModule::reset() { reverbNode.reset(); }
 
 void ReverbModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto roomSize = apvts.getRawParameterValue(paramId("room_size"));
-    auto damping = apvts.getRawParameterValue(paramId("damping"));
-    auto wet = apvts.getRawParameterValue(paramId("wet"));
-    auto dry = apvts.getRawParameterValue(paramId("dry"));
-    auto width = apvts.getRawParameterValue(paramId("width"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (roomSize != nullptr) reverbParams.roomSize = roomSize->load();
-    if (damping != nullptr) reverbParams.damping = damping->load();
-    if (wet != nullptr) reverbParams.wetLevel = wet->load();
-    if (dry != nullptr) reverbParams.dryLevel = dry->load();
-    if (width != nullptr) reverbParams.width = width->load();
+    reverbParams.roomSize = loadFloat(paramId("room_size"), 0.5f);
+    reverbParams.damping = loadFloat(paramId("damping"), 0.5f);
+    reverbParams.wetLevel = loadFloat(paramId("wet"), 0.33f);
+    reverbParams.dryLevel = loadFloat(paramId("dry"), 0.4f);
+    reverbParams.width = loadFloat(paramId("width"), 1.0f);
 
     reverbNode.setParameters(reverbParams);
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& ReverbModule::getModuleId() const { return moduleId; }

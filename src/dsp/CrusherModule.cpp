@@ -23,15 +23,20 @@ void CrusherModule::reset() {
 }
 
 void CrusherModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.bitDepth = apvts.getRawParameterValue(paramId("bits"))->load();
-    params.sampleRateReduction = apvts.getRawParameterValue(paramId("samples"))->load();
-    params.jitter = apvts.getRawParameterValue(paramId("jitter"))->load();
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.bitDepth = loadFloat(paramId("bits"), 16.0f);
+    params.sampleRateReduction = loadFloat(paramId("samples"), 1.0f);
+    params.jitter = loadFloat(paramId("jitter"), 0.0f);
 
     smoothedBits.setTargetValue(params.bitDepth);
     smoothedSamples.setTargetValue(params.sampleRateReduction);
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 void CrusherModule::processInternal(juce::AudioBuffer<float>& buffer) {

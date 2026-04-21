@@ -21,23 +21,18 @@ void CompressorModule::reset() {
 }
 
 void CompressorModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto thresh = apvts.getRawParameterValue(paramId("threshold"));
-    auto ratio = apvts.getRawParameterValue(paramId("ratio"));
-    auto attack = apvts.getRawParameterValue(paramId("attack"));
-    auto release = apvts.getRawParameterValue(paramId("release"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (thresh != nullptr) compressorNode.setThreshold(thresh->load());
-    if (ratio != nullptr) compressorNode.setRatio(ratio->load());
-    if (attack != nullptr) compressorNode.setAttack(attack->load());
-    if (release != nullptr) compressorNode.setRelease(release->load());
+    compressorNode.setThreshold(loadFloat(paramId("threshold"), -10.0f));
+    compressorNode.setRatio(loadFloat(paramId("ratio"), 3.0f));
+    compressorNode.setAttack(loadFloat(paramId("attack"), 2.0f));
+    compressorNode.setRelease(loadFloat(paramId("release"), 100.0f));
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr)
-        setDryWetMix(mix->load() / 100.0f);
-
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr)
-        setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& CompressorModule::getModuleId() const {

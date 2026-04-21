@@ -21,20 +21,25 @@ void ExpanderModule::reset() {
 }
 
 void ExpanderModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.threshold = apvts.getRawParameterValue(paramId("threshold"))->load();
-    params.ratio = apvts.getRawParameterValue(paramId("ratio"))->load();
-    params.attack = apvts.getRawParameterValue(paramId("attack"))->load();
-    params.release = apvts.getRawParameterValue(paramId("release"))->load();
-    params.knee = apvts.getRawParameterValue(paramId("knee"))->load();
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.threshold = loadFloat(paramId("threshold"), -40.0f);
+    params.ratio = loadFloat(paramId("ratio"), 2.0f);
+    params.attack = loadFloat(paramId("attack"), 10.0f);
+    params.release = loadFloat(paramId("release"), 100.0f);
+    params.knee = loadFloat(paramId("knee"), 0.0f);
     
-    float gainDb = apvts.getRawParameterValue(paramId("makeup_gain"))->load();
+    float gainDb = loadFloat(paramId("makeup_gain"), 0.0f);
     params.makeupGain = juce::Decibels::decibelsToGain(gainDb);
 
     envelopeFollower.setAttackTime(params.attack);
     envelopeFollower.setReleaseTime(params.release);
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 float ExpanderModule::calculateGain(float envelope) {

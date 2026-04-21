@@ -17,16 +17,21 @@ void MaximizerModule::reset() {
 }
 
 void MaximizerModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.threshold = apvts.getRawParameterValue(paramId("threshold"))->load();
-    params.ceiling = apvts.getRawParameterValue(paramId("ceiling"))->load();
-    params.release = apvts.getRawParameterValue(paramId("release"))->load();
-    params.softClip = apvts.getRawParameterValue(paramId("soft_clip"))->load() > 0.5f;
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.threshold = loadFloat(paramId("threshold"), 0.0f);
+    params.ceiling = loadFloat(paramId("ceiling"), 0.0f);
+    params.release = loadFloat(paramId("release"), 10.0f);
+    params.softClip = loadFloat(paramId("soft_clip"), 0.0f) > 0.5f;
 
     limiter.setThreshold(params.threshold);
     limiter.setRelease(params.release);
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 float MaximizerModule::applySoftClip(float x) {

@@ -32,18 +32,17 @@ void DelayModule::processInternal(juce::AudioBuffer<float>& buffer) {
 void DelayModule::reset() { delayLine.reset(); }
 
 void DelayModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto time = apvts.getRawParameterValue(paramId("time_ms"));
-    auto fb = apvts.getRawParameterValue(paramId("feedback"));
-    auto dmix = apvts.getRawParameterValue(paramId("delay_mix"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (time != nullptr) delayTimeMs = time->load();
-    if (fb != nullptr) feedback = fb->load() / 100.0f;
-    if (dmix != nullptr) delayMix = dmix->load() / 100.0f;
+    delayTimeMs = loadFloat(paramId("time_ms"), 200.0f);
+    feedback = loadFloat(paramId("feedback"), 30.0f) / 100.0f;
+    delayMix = loadFloat(paramId("delay_mix"), 50.0f) / 100.0f;
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& DelayModule::getModuleId() const { return moduleId; }

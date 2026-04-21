@@ -26,16 +26,21 @@ void AutoGainModule::reset() {
 }
 
 void AutoGainModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    params.target = apvts.getRawParameterValue(paramId("target"))->load();
-    params.attack = apvts.getRawParameterValue(paramId("attack"))->load();
-    params.release = apvts.getRawParameterValue(paramId("release"))->load();
-    params.silenceThreshold = apvts.getRawParameterValue(paramId("silence_threshold"))->load();
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    params.target = loadFloat(paramId("target"), -23.0f);
+    params.attack = loadFloat(paramId("attack"), 100.0f);
+    params.release = loadFloat(paramId("release"), 500.0f);
+    params.silenceThreshold = loadFloat(paramId("silence_threshold"), -60.0f);
 
     envelopeFollower.setAttackTime(params.attack);
     envelopeFollower.setReleaseTime(params.release);
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 void AutoGainModule::updateKFilters() {

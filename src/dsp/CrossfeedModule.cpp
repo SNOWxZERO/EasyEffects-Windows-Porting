@@ -26,8 +26,13 @@ void CrossfeedModule::reset() {
 }
 
 void CrossfeedModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    float newFcut = apvts.getRawParameterValue(paramId("fcut"))->load();
-    float newFeed = apvts.getRawParameterValue(paramId("feed"))->load();
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    float newFcut = loadFloat(paramId("fcut"), 700.0f);
+    float newFeed = loadFloat(paramId("feed"), 4.5f);
 
     if (newFcut != params.fcut || newFeed != params.feed) {
         params.fcut = newFcut;
@@ -35,8 +40,8 @@ void CrossfeedModule::updateParameters(juce::AudioProcessorValueTreeState& apvts
         updateFilters();
     }
 
-    setDryWetMix(apvts.getRawParameterValue(paramId("mix"))->load() / 100.0f);
-    setBypassed(apvts.getRawParameterValue(paramId("bypass"))->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 void CrossfeedModule::updateFilters() {

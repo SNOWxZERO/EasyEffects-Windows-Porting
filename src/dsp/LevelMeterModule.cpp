@@ -53,8 +53,13 @@ void LevelMeterModule::reset() {
 }
 
 void LevelMeterModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    // Meter has no DSP parameters
-    juce::ignoreUnused(apvts);
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
+
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& LevelMeterModule::getModuleId() const { return moduleId; }

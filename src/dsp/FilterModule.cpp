@@ -19,32 +19,29 @@ void FilterModule::processInternal(juce::AudioBuffer<float>& buffer) {
 void FilterModule::reset() { filterNode.reset(); }
 
 void FilterModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto type = apvts.getRawParameterValue(paramId("type"));
-    auto cutoff = apvts.getRawParameterValue(paramId("cutoff"));
-    auto resonance = apvts.getRawParameterValue(paramId("resonance"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (cutoff != nullptr && resonance != nullptr) {
-        float freq = cutoff->load();
-        float q = resonance->load();
-        int filterType = (type != nullptr) ? (int)type->load() : 0;
+    float freq = loadFloat(paramId("cutoff"), 1000.0f);
+    float q = loadFloat(paramId("resonance"), 0.707f);
+    int filterType = (int)loadFloat(paramId("type"), 0.0f);
 
-        // Clamp frequency to valid range
-        freq = juce::jlimit(20.0f, (float)(currentSampleRate * 0.49), freq);
-        q = juce::jmax(0.1f, q);
+    // Clamp frequency to valid range
+    freq = juce::jlimit(20.0f, (float)(currentSampleRate * 0.49), freq);
+    q = juce::jmax(0.1f, q);
 
-        if (filterType == 0) {
-            *filterNode.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(
-                currentSampleRate, freq, q);
-        } else {
-            *filterNode.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
-                currentSampleRate, freq, q);
-        }
+    if (filterType == 0) {
+        *filterNode.state = *juce::dsp::IIR::Coefficients<float>::makeHighPass(
+            currentSampleRate, freq, q);
+    } else {
+        *filterNode.state = *juce::dsp::IIR::Coefficients<float>::makeLowPass(
+            currentSampleRate, freq, q);
     }
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& FilterModule::getModuleId() const { return moduleId; }

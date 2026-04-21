@@ -22,17 +22,15 @@ void GainModule::reset() {
 }
 
 void GainModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto level = apvts.getRawParameterValue(paramId("level"));
-    if (level != nullptr)
-        gainNode.setGainDecibels(level->load());
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr)
-        setDryWetMix(mix->load() / 100.0f);
+    gainNode.setGainDecibels(loadFloat(paramId("level"), 0.0f));
 
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr)
-        setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& GainModule::getModuleId() const {

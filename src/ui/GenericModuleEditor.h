@@ -70,6 +70,28 @@ public:
             comboAttachments.add(
                 new juce::AudioProcessorValueTreeState::ComboBoxAttachment(apvts, fullId, *combo));
         }
+
+        // Add standard Slot Mix slider if not a Level Meter
+        if (effectTypeId != "levelmeter") {
+            std::string mixId = "slot" + std::to_string(slotIndex) + ".mix";
+            
+            auto* mixSlider = new juce::Slider(juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
+            mixSlider->setTextBoxStyle(juce::Slider::TextBoxRight, false, 80, 28);
+            mixSlider->setTextValueSuffix(" %");
+            mixSlider->setColour(juce::Slider::textBoxOutlineColourId, theme::borderSubtle);
+            mixSlider->setColour(juce::Slider::textBoxBackgroundColourId, juce::Colour(0xFF1A1A1A));
+            addAndMakeVisible(mixSlider);
+            sliders.add(mixSlider);
+
+            auto* mixLabel = new juce::Label(mixId + "_label", "Dry/Wet Mix");
+            mixLabel->setJustificationType(juce::Justification::centredLeft);
+            mixLabel->setColour(juce::Label::textColourId, theme::textSecondary);
+            addAndMakeVisible(mixLabel);
+            labels.add(mixLabel);
+
+            attachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(
+                apvts, mixId, *mixSlider));
+        }
     }
 
     ~GenericModuleEditor() override = default;

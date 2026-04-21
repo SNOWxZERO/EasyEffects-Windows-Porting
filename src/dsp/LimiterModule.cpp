@@ -18,16 +18,16 @@ void LimiterModule::processInternal(juce::AudioBuffer<float>& buffer) {
 void LimiterModule::reset() { limiterNode.reset(); }
 
 void LimiterModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
-    auto thresh = apvts.getRawParameterValue(paramId("threshold"));
-    auto release = apvts.getRawParameterValue(paramId("release"));
+    auto loadFloat = [&](const std::string& id, float defaultVal) {
+        if (auto* p = apvts.getRawParameterValue(id)) return p->load();
+        return defaultVal;
+    };
 
-    if (thresh != nullptr) limiterNode.setThreshold(thresh->load());
-    if (release != nullptr) limiterNode.setRelease(release->load());
+    limiterNode.setThreshold(loadFloat(paramId("threshold"), -1.0f));
+    limiterNode.setRelease(loadFloat(paramId("release"), 100.0f));
 
-    auto mix = apvts.getRawParameterValue(paramId("mix"));
-    if (mix != nullptr) setDryWetMix(mix->load() / 100.0f);
-    auto byp = apvts.getRawParameterValue(paramId("bypass"));
-    if (byp != nullptr) setBypassed(byp->load() > 0.5f);
+    setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);
+    setBypassed(loadFloat(slotParamId("bypass"), 0.0f) > 0.5f);
 }
 
 const std::string& LimiterModule::getModuleId() const { return moduleId; }

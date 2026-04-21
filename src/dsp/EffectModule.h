@@ -59,24 +59,35 @@ public:
     void setDryWetMix(float mix) { dryWetMix = juce::jlimit(0.0f, 1.0f, mix); }
     float getDryWetMix() const { return dryWetMix; }
 
-    // Slot-based parameter prefix (e.g., "slot3.compressor")
-    // When set, paramId() uses this instead of getModuleId()
+    // Slot-level identifier (e.g., "slot3")
+    void setSlotPrefix(const std::string& prefix) { slotPrefix = prefix; }
+    const std::string& getSlotPrefix() const { return slotPrefix; }
+
+    // Effect-level parameter prefix (e.g., "slot3.compressor")
     void setParamPrefix(const std::string& prefix) { slotParamPrefix = prefix; }
     const std::string& getParamPrefix() const { return slotParamPrefix; }
 
-    // Helper: builds a parameter ID string
-    // With prefix set: "slot3.compressor.threshold"
-    // Without prefix (legacy): "compressor.threshold"
+    // Helper: builds a parameter ID string for effect-specific parameters
+    // "slot3.compressor.threshold"
     std::string paramId(const std::string& paramName) const {
         if (!slotParamPrefix.empty())
             return slotParamPrefix + "." + paramName;
         return getModuleId() + "." + paramName;
     }
 
+    // Helper: builds a parameter ID string for common slot parameters
+    // "slot3.mix", "slot3.bypass"
+    std::string slotParamId(const std::string& paramName) const {
+        if (!slotPrefix.empty())
+            return slotPrefix + "." + paramName;
+        return paramName;
+    }
+
 protected:
     bool bypassed = false;
     float dryWetMix = 1.0f; // 1.0 = fully wet (effect applied)
-    std::string slotParamPrefix; // e.g., "slot3.compressor" — empty = legacy mode
+    std::string slotPrefix;      // e.g., "slot3"
+    std::string slotParamPrefix; // e.g., "slot3.compressor"
 
     // Pre-allocated in prepare() for dry/wet blending
     juce::AudioBuffer<float> dryBuffer;
