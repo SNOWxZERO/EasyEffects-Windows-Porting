@@ -19,6 +19,12 @@
 #include "BassLoudnessModule.h"
 #include "CrystalizerModule.h"
 #include "AutoGainModule.h"
+#include "MultibandCompressorModule.h"
+#include "MultibandGateModule.h"
+#include "ChorusModule.h"
+#include "PhaserModule.h"
+#include "RNNoiseModule.h"
+#include "PitchShiftModule.h"
 
 namespace eeval {
 
@@ -284,6 +290,97 @@ std::vector<EffectTypeDescriptor> EffectRegistry::buildRegistry() {
         },
         {},
         [](const std::string& prefix) { return makeSlotModule<AutoGainModule>(prefix, "autogain"); }
+    });
+
+    // === Multiband Compressor ===
+    {
+        std::vector<SlotParamDescriptor> mbParams;
+        mbParams.push_back({"crossover_low",  "Crossover Low",  "Hz", 20.0f, 1000.0f,  10.0f, 200.0f});
+        mbParams.push_back({"crossover_high", "Crossover High", "Hz", 1000.0f, 20000.0f, 100.0f, 2500.0f});
+        
+        const char* bands[3] = { "low", "mid", "high" };
+        for (const char* b : bands) {
+            std::string s = b;
+            std::string label = (s == "low" ? "Low" : s == "mid" ? "Mid" : "High");
+            mbParams.push_back({"threshold_" + s, label + " Threshold", "dB", -60.0f, 0.0f, 0.1f, -10.0f});
+            mbParams.push_back({"ratio_" + s,     label + " Ratio",     ":1",  1.0f, 20.0f, 0.1f, 3.0f});
+            mbParams.push_back({"attack_" + s,    label + " Attack",    "ms",  0.1f, 100.0f, 0.1f, 2.0f});
+            mbParams.push_back({"release_" + s,   label + " Release",   "ms",  1.0f, 1000.0f, 1.0f, 100.0f});
+            mbParams.push_back({"gain_" + s,      label + " Gain",      "dB", -24.0f, 24.0f, 0.1f, 0.0f});
+        }
+        
+        types.push_back({
+            "multiband_compressor", "Multiband Compressor", mbParams, {},
+            [](const std::string& prefix) { return makeSlotModule<MultibandCompressorModule>(prefix, "multiband_compressor"); }
+        });
+    }
+
+    // === Multiband Gate ===
+    {
+        std::vector<SlotParamDescriptor> mbgParams;
+        mbgParams.push_back({"crossover_low",  "Crossover Low",  "Hz", 20.0f, 1000.0f,  10.0f, 200.0f});
+        mbgParams.push_back({"crossover_high", "Crossover High", "Hz", 1000.0f, 20000.0f, 100.0f, 2500.0f});
+        
+        const char* bands[3] = { "low", "mid", "high" };
+        for (const char* b : bands) {
+            std::string s = b;
+            std::string label = (s == "low" ? "Low" : s == "mid" ? "Mid" : "High");
+            mbgParams.push_back({"threshold_" + s, label + " Threshold", "dB", -60.0f, 0.0f, 0.1f, -40.0f});
+            mbgParams.push_back({"ratio_" + s,     label + " Ratio",     ":1",  1.0f, 20.0f, 0.1f, 10.0f});
+            mbgParams.push_back({"attack_" + s,    label + " Attack",    "ms",  0.1f, 100.0f, 0.1f, 1.0f});
+            mbgParams.push_back({"release_" + s,   label + " Release",   "ms",  1.0f, 1000.0f, 1.0f, 100.0f});
+        }
+
+        types.push_back({
+            "multiband_gate", "Multiband Gate", mbgParams, {},
+            [](const std::string& prefix) { return makeSlotModule<MultibandGateModule>(prefix, "multiband_gate"); }
+        });
+    }
+
+    // === Chorus ===
+    types.push_back({
+        "chorus", "Chorus",
+        {
+            {"rate",         "Rate",         "Hz", 0.01f, 20.0f, 0.01f, 1.0f},
+            {"depth",        "Depth",        "",   0.0f,  1.0f,  0.01f, 0.5f},
+            {"feedback",     "Feedback",     "",  -1.0f,  1.0f,  0.01f, 0.0f},
+            {"centre_delay", "Centre Delay", "ms", 1.0f, 100.0f, 0.1f, 7.0f},
+            {"chorus_mix",   "Chorus Mix",   "",   0.0f,  1.0f,  0.01f, 0.5f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<ChorusModule>(prefix, "chorus"); }
+    });
+
+    // === Phaser ===
+    types.push_back({
+        "phaser", "Phaser",
+        {
+            {"rate",        "Rate",        "Hz", 0.01f, 20.0f, 0.01f, 0.5f},
+            {"depth",       "Depth",       "",   0.0f,  1.0f,  0.01f, 0.5f},
+            {"feedback",    "Feedback",    "",  -1.0f,  1.0f,  0.01f, 0.5f},
+            {"centre_freq", "Centre Freq", "Hz", 20.0f, 10000.0f, 10.0f, 1000.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<PhaserModule>(prefix, "phaser"); }
+    });
+
+    // === Noise Reduction (RNNoise) ===
+    types.push_back({
+        "rnnoise", "Noise Reduction",
+        {
+            {"enabled", "Enabled", "", 0.0f, 1.0f, 1.0f, 1.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<RNNoiseModule>(prefix, "rnnoise"); }
+    });
+    // === Pitch Shift (SoundTouch) ===
+    types.push_back({
+        "pitch_shift", "Pitch Shift",
+        {
+            {"semitones", "Semitones", "st", -12.0f, 12.0f, 0.1f, 0.0f},
+        },
+        {},
+        [](const std::string& prefix) { return makeSlotModule<PitchShiftModule>(prefix, "pitch_shift"); }
     });
 
     // === Gain ===

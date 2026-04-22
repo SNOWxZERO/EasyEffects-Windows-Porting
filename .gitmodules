@@ -1,0 +1,6 @@
+[submodule "external/rnnoise"]
+	path = external/rnnoise
+	url = https://github.com/mumble-voip/rnnoise.git
+[submodule "external/soundtouch"]
+	path = external/soundtouch
+	url = https://codeberg.org/soundtouch/soundtouch.git

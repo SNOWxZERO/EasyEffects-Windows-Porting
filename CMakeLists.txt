@@ -4,6 +4,11 @@ project(EasyEffectsWindowsV2 VERSION 0.1.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Add external dependencies
+add_subdirectory(external/rnnoise)
+set(SOUNDSTRETCH OFF CACHE BOOL "" FORCE)
+add_subdirectory(external/soundtouch)
+
 # Add JUCE from the parent directory
 add_subdirectory("../JUCE" JUCE)
 
@@ -51,6 +56,12 @@ target_sources(EasyEffects
     src/dsp/BassLoudnessModule.cpp
     src/dsp/CrystalizerModule.cpp
     src/dsp/AutoGainModule.cpp
+    src/dsp/MultibandCompressorModule.cpp
+    src/dsp/MultibandGateModule.cpp
+    src/dsp/ChorusModule.cpp
+    src/dsp/PhaserModule.cpp
+    src/dsp/RNNoiseModule.cpp
+    src/dsp/PitchShiftModule.cpp
 )
 
 # Link JUCE modules
@@ -58,6 +69,8 @@ target_link_libraries(EasyEffects
     PRIVATE
     juce::juce_audio_utils
     juce::juce_dsp
+    rnnoise
+    SoundTouch
     PUBLIC
     juce::juce_recommended_config_flags
     juce::juce_recommended_lto_flags
