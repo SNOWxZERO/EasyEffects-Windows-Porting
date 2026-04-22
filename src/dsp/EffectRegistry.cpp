@@ -369,6 +369,7 @@ std::vector<EffectTypeDescriptor> EffectRegistry::buildRegistry() {
         "rnnoise", "Noise Reduction",
         {
             {"enabled", "Enabled", "", 0.0f, 1.0f, 1.0f, 1.0f},
+            {"vad_threshold", "VAD Threshold", "%", 0.0f, 1.0f, 0.01f, 0.5f},
         },
         {},
         [](const std::string& prefix) { return makeSlotModule<RNNoiseModule>(prefix, "rnnoise"); }

@@ -71,11 +71,19 @@ private:
     int outFifoWritePos = 0;
     int samplesInOutFifo = 0;
 
-    // Parameter
+    // Parameters
     std::atomic<float>* enabledParam = nullptr;
+    std::atomic<float>* vadThresholdParam = nullptr;
     double latencySamples = 0.0;
 
-    void processFrame();
+    // Smoothing for VAD-based gating
+    juce::LinearSmoothedValue<float> smoothedVadGainL;
+    juce::LinearSmoothedValue<float> smoothedVadGainR;
+    
+    // Minimum gain when no VAD is detected (Soft gate floor)
+    const float softGateFloor = 0.001f; // -60dB
+
+    void processFrame(bool enabled);
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(RNNoiseModule)
 };
