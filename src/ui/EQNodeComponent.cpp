@@ -1,12 +1,13 @@
 #include "EQNodeComponent.h"
 #include "EQPlotComponent.h"
+#include "EQNodeSettingsPanel.h"
 #include "../dsp/EffectRegistry.h"
 
 namespace eeval {
 namespace ui {
 
-EQNodeComponent::EQNodeComponent(juce::AudioProcessorValueTreeState& vts, int slotIndex, int bandIndex, EQPlotComponent& plot)
-    : apvts(vts), bandIdx(bandIndex), parentPlot(plot)
+EQNodeComponent::EQNodeComponent(juce::AudioProcessorValueTreeState& vts, int slotIdx, int bandIndex, EQPlotComponent& plot)
+    : apvts(vts), slotIndex(slotIdx), bandIdx(bandIndex), parentPlot(plot)
 {
     prefix = eeval::EffectRegistry::slotPrefix(slotIndex) + ".eq.band" + std::to_string(bandIdx) + ".";
     
@@ -62,6 +63,12 @@ void EQNodeComponent::mouseDown(const juce::MouseEvent& e) {
         if (auto* p = apvts.getParameter(prefix + "gain"))
             p->setValueNotifyingHost(p->getNormalisableRange().convertTo0to1(0.0f));
         return;
+    }
+
+    // Launch Inspector on Left Click
+    if (e.mods.isLeftButtonDown()) {
+        auto* panel = new EQNodeSettingsPanel(apvts, slotIndex, bandIdx);
+        juce::CallOutBox::launchAsynchronously(std::unique_ptr<EQNodeSettingsPanel>(panel), getScreenBounds(), nullptr);
     }
 
     dragger.startDraggingComponent(this, e);
