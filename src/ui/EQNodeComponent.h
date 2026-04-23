@@ -24,6 +24,7 @@ public:
 
 private:
     juce::AudioProcessorValueTreeState& apvts;
+    int slotIndex;
     int bandIdx;
     std::string prefix;
     EQPlotComponent& parentPlot;
