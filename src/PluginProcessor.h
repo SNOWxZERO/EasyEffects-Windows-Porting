@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "dsp/EffectChain.h"
 #include "dsp/EffectRegistry.h"
+#include "PresetManager.h"
 
 namespace eeval { class LevelMeterModule; }
 
@@ -86,10 +87,12 @@ public:
 
     // Access to chain for UI queries
     eeval::EffectChain& getChain() { return dspChain; }
+    eeval::PresetManager& getPresetManager() { return *presetManager; }
 
 private:
     eeval::EffectChain dspChain;
     eeval::LevelMeterModule* levelMeterPtr = nullptr;
+    std::unique_ptr<eeval::PresetManager> presetManager;
     int selectedEditorIndex = 0;
 
     // Rebuild the DSP chain from current slot type parameters

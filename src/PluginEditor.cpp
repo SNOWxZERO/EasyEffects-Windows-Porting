@@ -17,29 +17,35 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     addEffectBtn.onClick = [this] { showAddEffectMenu(); };
 
     savePresetBtn.onClick = [this] {
-        auto chooser = std::make_shared<juce::FileChooser>("Save Preset",
-            juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*.xml");
-        chooser->launchAsync(juce::FileBrowserComponent::saveMode | juce::FileBrowserComponent::canSelectFiles,
-            [this, chooser](const juce::FileChooser& fc) {
-                if (fc.getResults().isEmpty()) return;
-                auto file = fc.getResult();
-                juce::MemoryBlock destData;
-                audioProcessor.getStateInformation(destData);
-                file.replaceWithData(destData.getData(), destData.getSize());
-            });
+        auto* aw = new juce::AlertWindow("Save Global Preset", "Enter preset name:", juce::MessageBoxIconType::NoIcon);
+        aw->addTextEditor("name", "", "Preset Name:");
+        aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+        aw->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+        
+        aw->enterModalState(true, juce::ModalCallbackFunction::create([this, aw](int result) {
+            if (result == 1) {
+                auto name = aw->getTextEditorContents("name");
+                if (name.isNotEmpty()) {
+                    audioProcessor.getPresetManager().saveGlobalPreset(name.toStdString());
+                }
+            }
+            delete aw;
+        }));
     };
 
     loadPresetBtn.onClick = [this] {
-        auto chooser = std::make_shared<juce::FileChooser>("Load Preset",
-            juce::File::getSpecialLocation(juce::File::userDocumentsDirectory), "*.xml");
-        chooser->launchAsync(juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles,
-            [this, chooser](const juce::FileChooser& fc) {
-                if (fc.getResults().isEmpty()) return;
-                auto file = fc.getResult();
-                juce::MemoryBlock destData;
-                file.loadFileAsData(destData);
-                audioProcessor.setStateInformation(destData.getData(), (int)destData.getSize());
-                refreshSidebar();
+        juce::PopupMenu menu;
+        auto list = audioProcessor.getPresetManager().getGlobalPresetList();
+        
+        for (int i = 0; i < list.size(); ++i)
+            menu.addItem(i + 1, list[i]);
+
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadPresetBtn),
+            [this, list](int result) {
+                if (result > 0) {
+                    audioProcessor.getPresetManager().loadGlobalPreset(list[result - 1].toStdString());
+                    refreshSidebar();
+                }
             });
     };
 
@@ -229,8 +235,14 @@ void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
     std::string slotPrefix = eeval::EffectRegistry::slotPrefix(slot.slotIndex);
 
     viewport.setViewedComponent(nullptr, false);
-    currentEditor = std::make_unique<eeval::ui::GenericModuleEditor>(
-        audioProcessor.parameters, slot.slotIndex, slot.typeId, slot.displayName);
+    
+    if (slot.typeId == "eq") {
+        currentEditor = std::make_unique<eeval::ui::VisualEqualizerEditor>(
+            audioProcessor.parameters, slot.slotIndex);
+    } else {
+        currentEditor = std::make_unique<eeval::ui::GenericModuleEditor>(
+            audioProcessor.parameters, slot.slotIndex, slot.typeId, slot.displayName);
+    }
 
     viewport.setViewedComponent(currentEditor.get(), false);
     resized();

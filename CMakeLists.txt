@@ -62,6 +62,11 @@ target_sources(EasyEffects
     src/dsp/PhaserModule.cpp
     src/dsp/RNNoiseModule.cpp
     src/dsp/PitchShiftModule.cpp
+    src/ui/EQPlotComponent.cpp
+    src/ui/EQNodeComponent.cpp
+    src/ui/VisualEqualizerEditor.cpp
+    src/ui/GenericModuleEditor.cpp
+    src/PresetManager.cpp
 )
 
 # Link JUCE modules

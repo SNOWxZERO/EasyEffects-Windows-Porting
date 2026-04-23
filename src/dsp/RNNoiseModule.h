@@ -23,6 +23,7 @@ public:
     void updateParameters(juce::AudioProcessorValueTreeState& apvts) override;
 
     double getLatencySamples() const override { return latencySamples; }
+    float getVADProbability() const override { return latestVad.load(); }
 
     const std::string& getModuleId() const override { return moduleId; }
     const std::string& getName() const override { return name; }
@@ -71,10 +72,11 @@ private:
     int outFifoWritePos = 0;
     int samplesInOutFifo = 0;
 
-    // Parameters
+    // Parameter
     std::atomic<float>* enabledParam = nullptr;
     std::atomic<float>* vadThresholdParam = nullptr;
     double latencySamples = 0.0;
+    std::atomic<float> latestVad { 0.0f };
 
     // Smoothing for VAD-based gating
     juce::LinearSmoothedValue<float> smoothedVadGainL;

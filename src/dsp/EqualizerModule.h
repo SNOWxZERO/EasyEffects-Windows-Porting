@@ -6,10 +6,22 @@
 
 namespace eeval {
 
+/**
+ * Enhanced Parametric Equalizer Module.
+ * Supports up to 10 bands with selectable filter types.
+ */
 class EqualizerModule : public EffectModule {
 public:
-    // Number of bands — change this single value to scale the EQ
-    static constexpr int NUM_BANDS = 4;
+    static constexpr int NUM_BANDS = 10;
+
+    enum class FilterType {
+        Peak = 0,
+        LowPass,
+        HighPass,
+        LowShelf,
+        HighShelf,
+        Notch
+    };
 
     EqualizerModule();
     ~EqualizerModule() override = default;
@@ -22,16 +34,28 @@ public:
     const std::string& getModuleId() const override;
     const std::string& getName() const override;
 
+    // Helper for UI to query magnitude response (Thread-safe)
+    float getMagnitudeForFrequency(double frequency) const;
+
 private:
-    // One filter per band per channel (stereo = 2 channels)
-    // filters[band][channel]
-    std::vector<std::array<juce::dsp::IIR::Filter<float>, 2>> filters;
+    struct BandState {
+        bool enabled = true;
+        FilterType type = FilterType::Peak;
+        float freq = 1000.0f;
+        float gain = 0.0f;
+        float q = 0.707f;
+        
+        // Internal filters for processing
+        std::array<juce::dsp::IIR::Filter<float>, 2> filters;
+    };
+
+    std::vector<BandState> bands;
 
     double currentSampleRate = 44100.0;
     std::string moduleId = "eq";
     std::string name = "Equalizer";
 
-    void updateCoefficients(int bandIndex, float gain, float freq, float q);
+    void updateBandCoefficients(int bandIndex);
 };
 
 } // namespace eeval

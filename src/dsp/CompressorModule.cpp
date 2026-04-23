@@ -11,9 +11,21 @@ void CompressorModule::prepare(const juce::dsp::ProcessSpec& spec) {
 }
 
 void CompressorModule::processInternal(juce::AudioBuffer<float>& buffer) {
+    float inMag = buffer.getMagnitude(0, buffer.getNumSamples());
+    
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);
     compressorNode.process(context);
+
+    float outMag = buffer.getMagnitude(0, buffer.getNumSamples());
+    
+    // Estimate Gain Reduction
+    if (inMag > 0.0001f) {
+        float reduction = 1.0f - (outMag / inMag);
+        gr.store(juce::jmax(0.0f, reduction));
+    } else {
+        gr.store(0.0f);
+    }
 }
 
 void CompressorModule::reset() {
