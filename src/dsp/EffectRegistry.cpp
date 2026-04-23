@@ -69,15 +69,42 @@ std::vector<EffectTypeDescriptor> EffectRegistry::buildRegistry() {
     // === Equalizer ===
     {
         std::vector<SlotParamDescriptor> eqParams;
+        std::vector<SlotChoiceDescriptor> eqChoices;
+        
+        juce::StringArray filterTypes {"Peaking", "Low Pass", "High Pass", "Low Shelf", "High Shelf", "Notch"};
+
         for (int i = 0; i < EqualizerModule::NUM_BANDS; ++i) {
             std::string bandBase = "band" + std::to_string(i);
-            float freqDefault = (i == 0) ? 100.0f : (i == 1) ? 1000.0f : (i == 2) ? 4000.0f : 10000.0f;
+            
+            // Smart defaults for a 10-band setup
+            float freqDefault = 1000.0f;
+            int typeDefault = 0; // Peaking
+            float enabledDefault = 1.0f;
+
+            if (i == 0) { freqDefault = 80.0f; typeDefault = 2; } // High Pass
+            else if (i == 1) { freqDefault = 150.0f; }
+            else if (i == 2) { freqDefault = 400.0f; }
+            else if (i == 3) { freqDefault = 800.0f; }
+            else if (i == 4) { freqDefault = 1500.0f; }
+            else if (i == 5) { freqDefault = 3000.0f; }
+            else if (i == 6) { freqDefault = 5000.0f; }
+            else if (i == 7) { freqDefault = 8000.0f; }
+            else if (i == 8) { freqDefault = 12000.0f; }
+            else if (i == 9) { freqDefault = 16000.0f; typeDefault = 1; } // Low Pass
+
+            // Disable bands 2-9 by default to keep it clean initially
+            if (i > 0 && i < 9) enabledDefault = 0.0f;
+
+            eqParams.push_back({bandBase + ".enabled", "Band " + std::to_string(i+1) + " Enabled", "", 0.0f, 1.0f, 1.0f, enabledDefault});
             eqParams.push_back({bandBase + ".gain", "Band " + std::to_string(i+1) + " Gain", "dB", -24.0f, 24.0f, 0.1f, 0.0f});
             eqParams.push_back({bandBase + ".freq", "Band " + std::to_string(i+1) + " Freq", "Hz", 20.0f, 20000.0f, 1.0f, freqDefault});
             eqParams.push_back({bandBase + ".q",    "Band " + std::to_string(i+1) + " Q",    "",   0.1f, 10.0f, 0.05f, 0.707f});
+            
+            eqChoices.push_back({bandBase + ".type", "Band " + std::to_string(i+1) + " Type", filterTypes, typeDefault});
         }
+
         types.push_back({
-            "eq", "Equalizer", eqParams, {},
+            "eq", "Equalizer", eqParams, eqChoices,
             [](const std::string& prefix) { return makeSlotModule<EqualizerModule>(prefix, "eq"); }
         });
     }

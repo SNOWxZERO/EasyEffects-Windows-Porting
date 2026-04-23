@@ -166,7 +166,9 @@ void RNNoiseModule::processFrame(bool enabled)
     if (sumSq > 0.1f && enabled) { // Threshold adjusted for 16-bit range
         vadProbL = rnnoise_process_frame(stL, outBufferL.data(), procBufferL.data());
         vadProbR = rnnoise_process_frame(stR, outBufferR.data(), procBufferR.data());
+        latestVad.store((vadProbL + vadProbR) * 0.5f);
     } else {
+        latestVad.store(0.0f);
         std::copy(procBufferL.begin(), procBufferL.end(), outBufferL.begin());
         std::copy(procBufferR.begin(), procBufferR.end(), outBufferR.begin());
     }

@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "ui/Theme.h"
 #include "ui/GenericModuleEditor.h"
+#include "ui/VisualEqualizerEditor.h"
 #include "ui/LevelMeterEditor.h"
 #include "ui/SpectrumAnalyzerEditor.h"
 #include "ui/SidebarRowCustomComponent.h"

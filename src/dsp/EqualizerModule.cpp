@@ -3,16 +3,14 @@
 namespace eeval {
 
 EqualizerModule::EqualizerModule() {
-    filters.resize(NUM_BANDS);
+    bands.resize(NUM_BANDS);
 }
 
 void EqualizerModule::prepare(const juce::dsp::ProcessSpec& spec) {
     currentSampleRate = spec.sampleRate;
 
-    // Pre-allocate all filters
-    filters.resize(NUM_BANDS);
-    for (auto& bandFilters : filters) {
-        for (auto& filter : bandFilters) {
+    for (auto& band : bands) {
+        for (auto& filter : band.filters) {
             filter.prepare(spec);
         }
     }
@@ -23,48 +21,73 @@ void EqualizerModule::processInternal(juce::AudioBuffer<float>& buffer) {
     int numChannels = buffer.getNumChannels();
     int numSamples = buffer.getNumSamples();
 
-    for (int band = 0; band < NUM_BANDS; ++band) {
+    for (int i = 0; i < NUM_BANDS; ++i) {
+        auto& band = bands[i];
+        if (!band.enabled) continue;
+
         for (int ch = 0; ch < juce::jmin(numChannels, 2); ++ch) {
             auto* channelData = buffer.getWritePointer(ch);
             juce::dsp::AudioBlock<float> singleChannelBlock(&channelData, 1, (size_t)numSamples);
             juce::dsp::ProcessContextReplacing<float> context(singleChannelBlock);
-            filters[band][ch].process(context);
+            band.filters[ch].process(context);
         }
     }
 }
 
 void EqualizerModule::reset() {
-    for (auto& bandFilters : filters) {
-        for (auto& filter : bandFilters) {
+    for (auto& band : bands) {
+        for (auto& filter : band.filters) {
             filter.reset();
         }
     }
 }
 
-void EqualizerModule::updateCoefficients(int bandIndex, float gain, float freq, float q) {
-    if (bandIndex < 0 || bandIndex >= NUM_BANDS) return;
+void EqualizerModule::updateBandCoefficients(int i) {
+    if (i < 0 || i >= NUM_BANDS) return;
+    auto& band = bands[i];
 
     juce::ReferenceCountedArray<juce::dsp::IIR::Coefficients<float>> coeffs;
+    float g = juce::Decibels::decibelsToGain(band.gain);
 
-    if (bandIndex == 0) {
-        // Low shelf
-        coeffs.add(juce::dsp::IIR::Coefficients<float>::makeLowShelf(
-            currentSampleRate, freq, q, juce::Decibels::decibelsToGain(gain)));
-    } else if (bandIndex == NUM_BANDS - 1) {
-        // High shelf
-        coeffs.add(juce::dsp::IIR::Coefficients<float>::makeHighShelf(
-            currentSampleRate, freq, q, juce::Decibels::decibelsToGain(gain)));
-    } else {
-        // Peak/Bell
-        coeffs.add(juce::dsp::IIR::Coefficients<float>::makePeakFilter(
-            currentSampleRate, freq, q, juce::Decibels::decibelsToGain(gain)));
+    switch (band.type) {
+        case FilterType::Peak:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makePeakFilter(currentSampleRate, band.freq, band.q, g));
+            break;
+        case FilterType::LowPass:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makeLowPass(currentSampleRate, band.freq, band.q));
+            break;
+        case FilterType::HighPass:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makeHighPass(currentSampleRate, band.freq, band.q));
+            break;
+        case FilterType::LowShelf:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makeLowShelf(currentSampleRate, band.freq, band.q, g));
+            break;
+        case FilterType::HighShelf:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makeHighShelf(currentSampleRate, band.freq, band.q, g));
+            break;
+        case FilterType::Notch:
+            coeffs.add(juce::dsp::IIR::Coefficients<float>::makeNotch(currentSampleRate, band.freq, band.q));
+            break;
     }
 
     if (coeffs.size() > 0) {
-        for (auto& filter : filters[bandIndex]) {
+        for (auto& filter : band.filters) {
             *filter.coefficients = *coeffs[0];
         }
     }
+}
+
+float EqualizerModule::getMagnitudeForFrequency(double frequency) const {
+    double mag = 1.0;
+    for (const auto& band : bands) {
+        if (!band.enabled) continue;
+        
+        // Use the first channel's filter for magnitude calculation
+        if (band.filters[0].coefficients != nullptr) {
+            mag *= band.filters[0].coefficients->getMagnitudeForFrequency(frequency, currentSampleRate);
+        }
+    }
+    return static_cast<float>(mag);
 }
 
 void EqualizerModule::updateParameters(juce::AudioProcessorValueTreeState& apvts) {
@@ -75,11 +98,15 @@ void EqualizerModule::updateParameters(juce::AudioProcessorValueTreeState& apvts
 
     for (int i = 0; i < NUM_BANDS; ++i) {
         auto bandPrefix = paramId("band" + std::to_string(i));
-        float gain = loadFloat(bandPrefix + ".gain", 0.0f);
-        float freq = loadFloat(bandPrefix + ".freq", 1000.0f);
-        float q = loadFloat(bandPrefix + ".q", 0.707f);
+        
+        auto& band = bands[i];
+        band.enabled = loadFloat(bandPrefix + ".enabled", 0.0f) > 0.5f;
+        band.type = static_cast<FilterType>((int)loadFloat(bandPrefix + ".type", 0.0f));
+        band.gain = loadFloat(bandPrefix + ".gain", 0.0f);
+        band.freq = loadFloat(bandPrefix + ".freq", 1000.0f);
+        band.q = loadFloat(bandPrefix + ".q", 0.707f);
 
-        updateCoefficients(i, gain, freq, q);
+        updateBandCoefficients(i);
     }
 
     setDryWetMix(loadFloat(slotParamId("mix"), 100.0f) / 100.0f);

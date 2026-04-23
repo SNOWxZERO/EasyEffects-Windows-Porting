@@ -16,11 +16,13 @@ public:
 
     const std::string& getModuleId() const override;
     const std::string& getName() const override;
+    float getGainReduction() const override { return gr.load(); }
 
 private:
     juce::dsp::Compressor<float> compressorNode;
     std::string moduleId = "compressor";
     std::string name = "Compressor";
+    std::atomic<float> gr { 0.0f };
 };
 
 } // namespace eeval

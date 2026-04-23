@@ -27,6 +27,12 @@ public:
     // Returns the latency in samples (if any)
     virtual double getLatencySamples() const { return 0.0; }
 
+    // For dynamics processors (0.0 to 1.0, where 1.0 is full reduction)
+    virtual float getGainReduction() const { return 0.0f; }
+
+    // For Voice Activity Detection (0.0 to 1.0)
+    virtual float getVADProbability() const { return 0.0f; }
+
     // Main process entry point — handles bypass and dry/wet mix
     void process(juce::AudioBuffer<float>& buffer)
     {

@@ -19,6 +19,8 @@ EasyEffectsAudioProcessor::EasyEffectsAudioProcessor()
     addEffect("compressor");
     addEffect("limiter");
     addEffect("gain");
+    
+    presetManager = std::make_unique<eeval::PresetManager>(*this);
 }
 
 EasyEffectsAudioProcessor::~EasyEffectsAudioProcessor()
