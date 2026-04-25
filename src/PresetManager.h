@@ -21,6 +21,7 @@ public:
     void loadModulePreset(int slotIndex, const std::string& name);
 
     juce::StringArray getGlobalPresetList();
+    juce::StringArray getModulePresetList(int slotIndex);
     
 private:
     EasyEffectsAudioProcessor& processor;

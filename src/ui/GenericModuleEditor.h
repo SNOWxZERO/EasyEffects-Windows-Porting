@@ -3,6 +3,7 @@
 #include "../dsp/EffectRegistry.h"
 #include "Theme.h"
 #include "VisualMeterComponent.h"
+#include "DynamicsVisualizer.h"
 
 namespace eeval {
 namespace ui {
@@ -23,6 +24,7 @@ public:
     void paint(juce::Graphics& g) override;
     void resized() override;
     void timerCallback() override;
+    void showPresetMenu();
 
 private:
     juce::AudioProcessorValueTreeState& apvts;
@@ -40,8 +42,11 @@ private:
 
     VisualMeterComponent grMeter { true };
     VisualMeterComponent vadMeter { false };
+    std::unique_ptr<DynamicsVisualizer> dynamicsViz;
+    juce::TextButton presetBtn;
     bool showGrMeter = false;
     bool showVadMeter = false;
+    bool showDynamicsViz = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GenericModuleEditor)
 };

@@ -116,4 +116,73 @@ juce::StringArray PresetManager::getGlobalPresetList() {
     return list;
 }
 
+void PresetManager::saveModulePreset(int slotIndex, const std::string& name) {
+    auto slots = processor.getActiveSlots();
+    for (const auto& slot : slots) {
+        if (slot.slotIndex == slotIndex) {
+            juce::DynamicObject::Ptr sObj = new juce::DynamicObject();
+            sObj->setProperty("typeId", juce::String(slot.typeId));
+            
+            juce::DynamicObject::Ptr paramsObj = new juce::DynamicObject();
+            std::string prefix = EffectRegistry::slotPrefix(slot.slotIndex);
+            
+            const auto* desc = EffectRegistry::findType(slot.typeId);
+            if (desc) {
+                for (const auto& p : desc->params) {
+                    std::string id = prefix + "." + slot.typeId + "." + p.suffix;
+                    if (auto* val = processor.parameters.getRawParameterValue(id))
+                        paramsObj->setProperty(juce::String(p.suffix), val->load());
+                }
+            }
+            sObj->setProperty("params", paramsObj.get());
+
+            auto file = getPresetFolder(false).getChildFile(slot.typeId).getChildFile(name + ".json");
+            if (!file.getParentDirectory().exists()) file.getParentDirectory().createDirectory();
+
+            if (auto stream = std::unique_ptr<juce::FileOutputStream>(file.createOutputStream())) {
+                juce::JSON::writeToStream(*stream, juce::var(sObj.get()));
+            }
+            break;
+        }
+    }
+}
+
+void PresetManager::loadModulePreset(int slotIndex, const std::string& name) {
+    auto slots = processor.getActiveSlots();
+    for (const auto& slot : slots) {
+        if (slot.slotIndex == slotIndex) {
+            auto file = getPresetFolder(false).getChildFile(slot.typeId).getChildFile(name + ".json");
+            if (!file.existsAsFile()) return;
+
+            auto json = juce::JSON::parse(file);
+            if (auto* pObj = json.getDynamicObject()) {
+                auto params = pObj->getProperty("params");
+                if (auto* paramData = params.getDynamicObject()) {
+                    std::string prefix = EffectRegistry::slotPrefix(slotIndex);
+                    for (auto& prop : paramData->getProperties()) {
+                        std::string fullId = prefix + "." + slot.typeId + "." + prop.name.toString().toStdString();
+                        if (auto* p = processor.parameters.getParameter(fullId))
+                            p->setValueNotifyingHost(p->getNormalisableRange().convertTo0to1((float)prop.value));
+                    }
+                }
+            }
+            break;
+        }
+    }
+}
+
+juce::StringArray PresetManager::getModulePresetList(int slotIndex) {
+    auto slots = processor.getActiveSlots();
+    for (const auto& slot : slots) {
+        if (slot.slotIndex == slotIndex) {
+            juce::StringArray list;
+            auto folder = getPresetFolder(false).getChildFile(slot.typeId);
+            auto files = folder.findChildFiles(juce::File::findFiles, false, "*.json");
+            for (auto& f : files) list.add(f.getFileNameWithoutExtension());
+            return list;
+        }
+    }
+    return {};
+}
+
 } // namespace eeval

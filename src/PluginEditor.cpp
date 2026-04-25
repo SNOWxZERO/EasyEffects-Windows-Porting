@@ -238,7 +238,7 @@ void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
     
     if (slot.typeId == "eq") {
         currentEditor = std::make_unique<eeval::ui::VisualEqualizerEditor>(
-            audioProcessor.parameters, slot.slotIndex);
+            audioProcessor, audioProcessor.parameters, slot.slotIndex);
     } else {
         currentEditor = std::make_unique<eeval::ui::GenericModuleEditor>(
             audioProcessor.parameters, slot.slotIndex, slot.typeId, slot.displayName);

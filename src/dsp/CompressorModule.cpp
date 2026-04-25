@@ -12,6 +12,7 @@ void CompressorModule::prepare(const juce::dsp::ProcessSpec& spec) {
 
 void CompressorModule::processInternal(juce::AudioBuffer<float>& buffer) {
     float inMag = buffer.getMagnitude(0, buffer.getNumSamples());
+    inputLevel.store(juce::Decibels::gainToDecibels(inMag));
     
     juce::dsp::AudioBlock<float> block(buffer);
     juce::dsp::ProcessContextReplacing<float> context(block);

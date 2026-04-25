@@ -5,6 +5,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <vector>
 
+class EasyEffectsAudioProcessor;
+
 namespace eeval {
 namespace ui {
 
@@ -13,9 +15,10 @@ namespace ui {
  * Draws the cumulative magnitude response of all EQ bands.
  */
 class EQPlotComponent : public juce::Component, 
-                         public juce::AudioProcessorValueTreeState::Listener {
+                        public juce::AudioProcessorValueTreeState::Listener,
+                        public juce::Timer {
 public:
-    EQPlotComponent(juce::AudioProcessorValueTreeState& vts, int slotIndex);
+    EQPlotComponent(EasyEffectsAudioProcessor& p, juce::AudioProcessorValueTreeState& vts, int slotIndex);
     ~EQPlotComponent() override;
 
     void paint(juce::Graphics& g) override;
@@ -25,18 +28,21 @@ public:
     void updateResponse();
 
     void parameterChanged(const juce::String& parameterID, float newValue) override;
+    void timerCallback() override;
+    void updateSpectrumPath();
 
-private:
+    EasyEffectsAudioProcessor& audioProcessor;
     juce::AudioProcessorValueTreeState& apvts;
     int slotIdx;
     std::string prefix;
 
     juce::Path responsePath;
+    juce::Path spectrumPath;
     
     // Cached response values for the current view
     std::vector<float> magnitudes;
     
-    bool needsUpdate = true;
+    std::atomic<bool> needsUpdate { true };
     double sampleRate = 48000.0;
 
     // Helpers

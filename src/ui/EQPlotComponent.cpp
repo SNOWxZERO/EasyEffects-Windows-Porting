@@ -1,14 +1,19 @@
 #include "EQPlotComponent.h"
+#include "../PluginProcessor.h"
+#include "../dsp/SpectrumAnalyzer.h"
 #include "../dsp/EffectRegistry.h"
 #include "../dsp/EqualizerModule.h"
 
 namespace eeval {
 namespace ui {
 
-EQPlotComponent::EQPlotComponent(juce::AudioProcessorValueTreeState& vts, int slotIndex)
-    : apvts(vts), slotIdx(slotIndex)
+EQPlotComponent::EQPlotComponent(EasyEffectsAudioProcessor& p, juce::AudioProcessorValueTreeState& vts, int slotIndex)
+    : audioProcessor(p), apvts(vts), slotIdx(slotIndex)
 {
     prefix = eeval::EffectRegistry::slotPrefix(slotIdx) + ".eq.";
+    
+    sampleRate = audioProcessor.getSampleRate();
+    startTimerHz(60); // 60 FPS for smooth spectrum
     
     // Listen to all 10 bands
     for (int i = 0; i < 10; ++i) {
@@ -36,7 +41,14 @@ EQPlotComponent::~EQPlotComponent() {
 
 void EQPlotComponent::parameterChanged(const juce::String&, float) {
     needsUpdate = true;
-    juce::MessageManager::callAsync([this]() { repaint(); });
+}
+
+void EQPlotComponent::timerCallback() {
+    auto& analyzer = audioProcessor.getSpectrumAnalyzer();
+    analyzer.performAnalysis();
+    
+    updateSpectrumPath();
+    repaint();
 }
 
 void EQPlotComponent::updateResponse() {
@@ -92,6 +104,40 @@ void EQPlotComponent::updateResponse() {
     needsUpdate = false;
 }
 
+void EQPlotComponent::updateSpectrumPath() {
+    spectrumPath.clear();
+    auto& analyzer = audioProcessor.getSpectrumAnalyzer();
+    auto& data = analyzer.getDisplayData();
+    
+    auto w = (float)getWidth();
+    auto h = (float)getHeight();
+    
+    bool started = false;
+    float binStep = (float)audioProcessor.getSampleRate() / (float)eeval::dsp::SpectrumAnalyzer::fftSize;
+
+    for (int i = 1; i < (int)data.size(); ++i) {
+        float freq = (float)i * binStep;
+        if (freq < 20.0f) continue;
+        if (freq > 20000.0f) break;
+
+        float x = getXForFreq(freq) * w;
+        float y = juce::jmap<float>(data[i], -100.0f, 0.0f, h, 0.0f);
+
+        if (!started) {
+            spectrumPath.startNewSubPath(x, h);
+            spectrumPath.lineTo(x, y);
+            started = true;
+        } else {
+            spectrumPath.lineTo(x, y);
+        }
+    }
+    
+    if (started) {
+        spectrumPath.lineTo(w, h);
+        spectrumPath.closeSubPath();
+    }
+}
+
 void EQPlotComponent::paint(juce::Graphics& g) {
     updateResponse();
 
@@ -117,6 +163,12 @@ void EQPlotComponent::paint(juce::Graphics& g) {
         g.drawHorizontalLine((int)y, 0.0f, w);
         g.drawText(juce::String((int)db) + " dB", 2, (int)y - 12, 40, 12, juce::Justification::left);
     }
+
+    // Spectrum Analyzer
+    g.setColour(juce::Colours::cyan.withAlpha(0.15f));
+    g.fillPath(spectrumPath);
+    g.setColour(juce::Colours::cyan.withAlpha(0.3f));
+    g.strokePath(spectrumPath, juce::PathStrokeType(1.0f));
 
     // Response Curve
     g.setColour(juce::Colours::cyan.withAlpha(0.8f));

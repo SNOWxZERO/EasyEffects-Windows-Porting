@@ -33,6 +33,9 @@ public:
     // For Voice Activity Detection (0.0 to 1.0)
     virtual float getVADProbability() const { return 0.0f; }
 
+    // For real-time signal visualization (dB-ish scale or magnitude)
+    virtual float getInputLevel() const { return inputLevel.load(); }
+
     // Main process entry point — handles bypass and dry/wet mix
     void process(juce::AudioBuffer<float>& buffer)
     {
@@ -94,6 +97,7 @@ protected:
     float dryWetMix = 1.0f; // 1.0 = fully wet (effect applied)
     std::string slotPrefix;      // e.g., "slot3"
     std::string slotParamPrefix; // e.g., "slot3.compressor"
+    std::atomic<float> inputLevel { 0.0f };
 
     // Pre-allocated in prepare() for dry/wet blending
     juce::AudioBuffer<float> dryBuffer;

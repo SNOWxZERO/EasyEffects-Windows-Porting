@@ -4,8 +4,8 @@
 namespace eeval {
 namespace ui {
 
-VisualEqualizerEditor::VisualEqualizerEditor(juce::AudioProcessorValueTreeState& vts, int slotIndex)
-    : apvts(vts), slotIdx(slotIndex), plot(vts, slotIndex)
+VisualEqualizerEditor::VisualEqualizerEditor(EasyEffectsAudioProcessor& p, juce::AudioProcessorValueTreeState& vts, int slotIndex)
+    : audioProcessor(p), apvts(vts), slotIdx(slotIndex), plot(p, vts, slotIndex)
 {
     addAndMakeVisible(plot);
 

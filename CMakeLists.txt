@@ -65,6 +65,7 @@ target_sources(EasyEffects
     src/ui/EQPlotComponent.cpp
     src/ui/EQNodeComponent.cpp
     src/ui/EQNodeSettingsPanel.cpp
+    src/ui/DynamicsVisualizer.cpp
     src/ui/VisualEqualizerEditor.cpp
     src/ui/GenericModuleEditor.cpp
     src/PresetManager.cpp
