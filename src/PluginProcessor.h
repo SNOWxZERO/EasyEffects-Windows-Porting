@@ -3,6 +3,7 @@
 #include <JuceHeader.h>
 #include "dsp/EffectChain.h"
 #include "dsp/EffectRegistry.h"
+#include "dsp/SpectrumAnalyzer.h"
 #include "PresetManager.h"
 
 namespace eeval { class LevelMeterModule; }
@@ -57,24 +58,8 @@ public:
     // For LevelMeter UI polling
     eeval::LevelMeterModule* getLevelMeter();
 
-    // FFT Visualization Data
-    static constexpr int fftOrder = 11;
-    static constexpr int fftSize = 1 << fftOrder; // 2048
-    std::array<float, fftSize> fifo;
-    std::array<float, fftSize * 2> fftData;
-    int fifoIndex = 0;
-    std::atomic<bool> nextFFTBlockReady { false };
-
-    void pushNextSampleIntoFifo(float sample) noexcept {
-        if (fifoIndex == fftSize) {
-            if (!nextFFTBlockReady) {
-                std::copy(fifo.begin(), fifo.end(), fftData.begin());
-                nextFFTBlockReady = true;
-            }
-            fifoIndex = 0;
-        }
-        fifo[(size_t)fifoIndex++] = sample;
-    }
+    // Analyzer Access
+    eeval::dsp::SpectrumAnalyzer& getSpectrumAnalyzer() { return spectrumAnalyzer; }
 
     int getNumPrograms() override;
     int getCurrentProgram() override;
@@ -93,6 +78,7 @@ private:
     eeval::EffectChain dspChain;
     eeval::LevelMeterModule* levelMeterPtr = nullptr;
     std::unique_ptr<eeval::PresetManager> presetManager;
+    eeval::dsp::SpectrumAnalyzer spectrumAnalyzer;
     int selectedEditorIndex = 0;
 
     // Rebuild the DSP chain from current slot type parameters

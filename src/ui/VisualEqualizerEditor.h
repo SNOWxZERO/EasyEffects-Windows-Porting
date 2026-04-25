@@ -5,6 +5,8 @@
 #include "EQNodeComponent.h"
 #include <vector>
 
+class EasyEffectsAudioProcessor;
+
 namespace eeval {
 namespace ui {
 
@@ -13,13 +15,14 @@ namespace ui {
  */
 class VisualEqualizerEditor : public juce::Component {
 public:
-    VisualEqualizerEditor(juce::AudioProcessorValueTreeState& vts, int slotIndex);
+    VisualEqualizerEditor(EasyEffectsAudioProcessor& p, juce::AudioProcessorValueTreeState& vts, int slotIndex);
     ~VisualEqualizerEditor() override = default;
 
     void paint(juce::Graphics& g) override;
     void resized() override;
 
 private:
+    EasyEffectsAudioProcessor& audioProcessor;
     juce::AudioProcessorValueTreeState& apvts;
     int slotIdx;
 

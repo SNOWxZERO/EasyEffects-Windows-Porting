@@ -68,12 +68,23 @@ GenericModuleEditor::GenericModuleEditor(juce::AudioProcessorValueTreeState& sta
         attachments.add(new juce::AudioProcessorValueTreeState::SliderAttachment(apvts, mixId, *mixSlider));
     }
 
+    // Preset Button
+    presetBtn.setButtonText("Presets");
+    presetBtn.onClick = [this] { showPresetMenu(); };
+    addAndMakeVisible(presetBtn);
+
     // Determine if we need meters
     showGrMeter = (effectTypeId == "compressor" || effectTypeId == "gate" || effectTypeId == "expander");
     showVadMeter = (effectTypeId == "rnnoise");
 
     if (showGrMeter) addAndMakeVisible(grMeter);
     if (showVadMeter) addAndMakeVisible(vadMeter);
+
+    if (showGrMeter) {
+        showDynamicsViz = true;
+        dynamicsViz = std::make_unique<DynamicsVisualizer>(apvts, prefix + ".", effectTypeId);
+        addAndMakeVisible(*dynamicsViz);
+    }
 
     startTimerHz(30); // 30 FPS updates
 }
@@ -87,6 +98,49 @@ void GenericModuleEditor::timerCallback() {
 
     if (showGrMeter) grMeter.setValue(module->getGainReduction());
     if (showVadMeter) vadMeter.setValue(module->getVADProbability());
+
+    if (showDynamicsViz && dynamicsViz) {
+        float inDb = module->getInputLevel();
+        float gr = module->getGainReduction(); // reduction factor 0 to 1
+        float outDb = inDb - (gr * 30.0f); // Rough visual approximation of output
+        dynamicsViz->setCurrentLevels(inDb, outDb);
+    }
+}
+
+void GenericModuleEditor::showPresetMenu() {
+    auto* processor = dynamic_cast<EasyEffectsAudioProcessor*>(&apvts.processor);
+    if (!processor) return;
+
+    juce::PopupMenu menu;
+    menu.addItem(1, "Save As...");
+    menu.addSeparator();
+
+    auto presets = processor->getPresetManager().getModulePresetList(slotIndex);
+    for (int i = 0; i < presets.size(); ++i)
+        menu.addItem(10 + i, presets[i]);
+
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBtn), [this, processor, presets](int result) {
+        if (result == 1) {
+            // Save As - Using standard AlertWindow as a placeholder for text input
+            auto* alert = new juce::AlertWindow("Save " + displayName + " Preset", "Enter preset name:", juce::AlertWindow::NoIcon);
+            alert->addTextEditor("name", "", "Preset Name");
+            alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+            alert->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+            
+            alert->enterModalState(true, juce::ModalCallbackFunction::create([this, processor, alert](int res) {
+                if (res == 1) {
+                    auto name = alert->getTextEditorContents("name").toStdString();
+                    if (!name.empty())
+                        processor->getPresetManager().saveModulePreset(slotIndex, name);
+                }
+                delete alert;
+            }));
+        } else if (result >= 10) {
+            // Load
+            auto name = presets[result - 10].toStdString();
+            processor->getPresetManager().loadModulePreset(slotIndex, name);
+        }
+    });
 }
 
 void GenericModuleEditor::paint(juce::Graphics& g) {
@@ -105,13 +159,19 @@ void GenericModuleEditor::paint(juce::Graphics& g) {
 
 void GenericModuleEditor::resized() {
     auto area = getLocalBounds();
-    area.removeFromTop(40);
+    auto titleArea = area.removeFromTop(40);
+    presetBtn.setBounds(titleArea.removeFromRight(100).reduced(10, 8));
+
     auto cardArea = area.reduced(15, 5);
     
     if (showGrMeter || showVadMeter) {
         auto meterArea = cardArea.removeFromRight(25).reduced(5, 40);
         if (showGrMeter) grMeter.setBounds(meterArea);
         if (showVadMeter) vadMeter.setBounds(meterArea);
+    }
+
+    if (showDynamicsViz && dynamicsViz) {
+        dynamicsViz->setBounds(cardArea.removeFromBottom(140).reduced(20, 10));
     }
 
     auto innerArea = cardArea.reduced(15, 35);

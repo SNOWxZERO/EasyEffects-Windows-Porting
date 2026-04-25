@@ -105,9 +105,6 @@ void EQNodeComponent::mouseUp(const juce::MouseEvent&) {
 void EQNodeComponent::updatePosition() {
     if (!freqParam || !gainParam) return;
 
-    auto plotW = (float)parentPlot.getWidth();
-    auto plotH = (float)parentPlot.getHeight();
-
     // Freq -> X
     auto logF = std::log10(freqParam->load());
     auto logMin = std::log10(20.0);

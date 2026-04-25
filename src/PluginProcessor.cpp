@@ -297,14 +297,18 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     // Execute DSP chain
     dspChain.process(buffer);
 
-    // Push final output to FFT fifo for spectrum analyzer
+    // Push final output to FFT analyzer
     if (buffer.getNumChannels() > 0) {
-        auto* channelDataL = buffer.getReadPointer(0);
-        auto* channelDataR = buffer.getNumChannels() > 1 ? buffer.getReadPointer(1) : nullptr;
-        for (int i = 0; i < buffer.getNumSamples(); ++i) {
-            float sample = channelDataL[i];
-            if (channelDataR != nullptr) sample = (sample + channelDataR[i]) * 0.5f;
-            pushNextSampleIntoFifo(sample);
+        if (buffer.getNumChannels() == 2) {
+            float mono[1024]; // Safe stack buffer for common block sizes
+            int numToProcess = std::min(buffer.getNumSamples(), 1024);
+            auto* l = buffer.getReadPointer(0);
+            auto* r = buffer.getReadPointer(1);
+            for (int i = 0; i < numToProcess; ++i)
+                mono[i] = (l[i] + r[i]) * 0.5f;
+            spectrumAnalyzer.pushBlock(mono, numToProcess);
+        } else {
+            spectrumAnalyzer.pushBlock(buffer.getReadPointer(0), buffer.getNumSamples());
         }
     }
 }
