@@ -116,12 +116,16 @@ void GenericModuleEditor::showPresetMenu() {
     menu.addSeparator();
 
     auto presets = processor->getPresetManager().getModulePresetList(slotIndex);
-    for (int i = 0; i < presets.size(); ++i)
-        menu.addItem(10 + i, presets[i]);
+    for (int i = 0; i < presets.size(); ++i) {
+        juce::PopupMenu itemMenu;
+        itemMenu.addItem(100 + i, "Load");
+        itemMenu.addItem(200 + i, "Delete");
+        menu.addSubMenu(presets[i], itemMenu);
+    }
 
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBtn), [this, processor, presets](int result) {
         if (result == 1) {
-            // Save As - Using standard AlertWindow as a placeholder for text input
+            // Save As
             auto* alert = new juce::AlertWindow("Save " + displayName + " Preset", "Enter preset name:", juce::AlertWindow::NoIcon);
             alert->addTextEditor("name", "", "Preset Name");
             alert->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -135,9 +139,23 @@ void GenericModuleEditor::showPresetMenu() {
                 }
                 delete alert;
             }));
-        } else if (result >= 10) {
+        } else if (result >= 200) {
+            // Delete with confirmation
+            auto name = presets[result - 200].toStdString();
+            auto opts = juce::MessageBoxOptions()
+                .withIconType(juce::MessageBoxIconType::WarningIcon)
+                .withTitle("Delete Preset")
+                .withMessage("Delete \"" + juce::String(name) + "\"?")
+                .withButton("Delete")
+                .withButton("Cancel");
+            juce::AlertWindow::showAsync(opts, [this, processor, name](int r) {
+                if (r == 1) {
+                    processor->getPresetManager().deleteModulePreset(slotIndex, name);
+                }
+            });
+        } else if (result >= 100) {
             // Load
-            auto name = presets[result - 10].toStdString();
+            auto name = presets[result - 100].toStdString();
             processor->getPresetManager().loadModulePreset(slotIndex, name);
         }
     });

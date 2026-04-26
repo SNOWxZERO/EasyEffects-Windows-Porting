@@ -16,12 +16,18 @@ juce::File PresetManager::getPresetFolder(bool isGlobal) {
 }
 
 void PresetManager::saveGlobalPreset(const std::string& name) {
+    if (name.empty()) return;
     auto file = getPresetFolder(true).getChildFile(name + ".json");
-    auto json = serializeChain();
     
+    // Overwrite: delete existing file first to avoid appending
+    if (file.existsAsFile()) file.deleteFile();
+    
+    auto json = serializeChain();
     if (auto stream = std::unique_ptr<juce::FileOutputStream>(file.createOutputStream())) {
         juce::JSON::writeToStream(*stream, json);
     }
+    currentPresetName = name;
+    dirty = false;
 }
 
 void PresetManager::loadGlobalPreset(const std::string& name) {
@@ -29,7 +35,20 @@ void PresetManager::loadGlobalPreset(const std::string& name) {
     if (!file.existsAsFile()) return;
 
     auto json = juce::JSON::parse(file);
-    if (!json.isVoid()) deserializeChain(json);
+    if (!json.isVoid()) {
+        deserializeChain(json);
+        currentPresetName = name;
+        dirty = false;
+    }
+}
+
+void PresetManager::deleteGlobalPreset(const std::string& name) {
+    auto file = getPresetFolder(true).getChildFile(name + ".json");
+    if (file.existsAsFile()) file.deleteFile();
+    if (currentPresetName == name) {
+        currentPresetName.clear();
+        dirty = false;
+    }
 }
 
 juce::var PresetManager::serializeChain() {
@@ -183,6 +202,17 @@ void PresetManager::loadModulePreset(int slotIndex, const std::string& name) {
                     }
                 }
             }
+            break;
+        }
+    }
+}
+
+void PresetManager::deleteModulePreset(int slotIndex, const std::string& name) {
+    auto slots = processor.getActiveSlots();
+    for (const auto& slot : slots) {
+        if (slot.slotIndex == slotIndex) {
+            auto file = getPresetFolder(false).getChildFile(slot.typeId).getChildFile(name + ".json");
+            if (file.existsAsFile()) file.deleteFile();
             break;
         }
     }

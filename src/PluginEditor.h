@@ -5,13 +5,12 @@
 #include "ui/Theme.h"
 #include "ui/GenericModuleEditor.h"
 #include "ui/VisualEqualizerEditor.h"
-#include "ui/LevelMeterEditor.h"
-#include "ui/SpectrumAnalyzerEditor.h"
 #include "ui/SidebarRowCustomComponent.h"
 #include "dsp/EffectRegistry.h"
 
 class EasyEffectsAudioProcessorEditor : public juce::AudioProcessorEditor,
-                                        private juce::ListBoxModel
+                                        private juce::ListBoxModel,
+                                        private juce::Timer
 {
 public:
     EasyEffectsAudioProcessorEditor(EasyEffectsAudioProcessor&);
@@ -19,6 +18,7 @@ public:
 
     void paint(juce::Graphics&) override;
     void resized() override;
+    void timerCallback() override;
 
     // ListBoxModel
     int getNumRows() override;
@@ -33,23 +33,21 @@ public:
 private:
     void rebuildEditorView();
     void showAddEffectMenu();
+    void showPresetMenu();
 
     EasyEffectsAudioProcessor& audioProcessor;
 
     eeval::theme::CustomLookAndFeel customTheme;
 
     // Header
-    juce::TextButton savePresetBtn { "Save Preset" };
-    juce::TextButton loadPresetBtn { "Load Preset" };
-    juce::TextButton addEffectBtn  { "+ Add Effect" };
+    juce::TextButton presetBtn   { "Presets" };
+    juce::TextButton bypassBtn   { "Bypass All" };
+    juce::TextButton addEffectBtn { "+ Add Effect" };
+    juce::Label presetNameLabel;
 
     // Sidebar
     juce::ListBox moduleList;
     std::vector<EasyEffectsAudioProcessor::SlotInfo> activeSlots;
-
-    // Global Panels
-    std::unique_ptr<eeval::ui::LevelMeterEditor> globalFooterMeter;
-    std::unique_ptr<eeval::ui::SpectrumAnalyzerEditor> fftAnalyzer;
 
     // Main Content
     juce::Viewport viewport;
@@ -57,7 +55,6 @@ private:
 
     // Layout constants
     static constexpr int headerHeight = 50;
-    static constexpr int fftHeight = 120;
     static constexpr int footerHeight = 36;
     static constexpr int sidebarWidth = 190;
     static constexpr int sidebarHeaderHeight = 36;
