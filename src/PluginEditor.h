@@ -5,6 +5,7 @@
 #include "ui/Theme.h"
 #include "ui/GenericModuleEditor.h"
 #include "ui/VisualEqualizerEditor.h"
+#include "ui/SpectrumAnalyzerEditor.h"
 #include "ui/SidebarRowCustomComponent.h"
 #include "dsp/EffectRegistry.h"
 
@@ -34,6 +35,7 @@ private:
     void rebuildEditorView();
     void showAddEffectMenu();
     void showPresetMenu();
+    void toggleMonitor();
 
     EasyEffectsAudioProcessor& audioProcessor;
 
@@ -42,8 +44,12 @@ private:
     // Header
     juce::TextButton presetBtn   { "Presets" };
     juce::TextButton bypassBtn   { "Bypass All" };
+    juce::TextButton monitorBtn  { "Monitor" };
     juce::TextButton addEffectBtn { "+ Add Effect" };
     juce::Label presetNameLabel;
+
+    // FFT Analyzer Bar (top)
+    std::unique_ptr<eeval::ui::SpectrumAnalyzerEditor> fftAnalyzer;
 
     // Sidebar
     juce::ListBox moduleList;
@@ -53,8 +59,14 @@ private:
     juce::Viewport viewport;
     std::unique_ptr<juce::Component> currentEditor;
 
+    // Monitor state
+    bool isMonitoring = false;
+    juce::String savedOutputDevice;  // original output device before monitor toggle
+    juce::String monitorDeviceName;  // user-chosen monitor/playback device
+
     // Layout constants
     static constexpr int headerHeight = 50;
+    static constexpr int fftHeight = 120;
     static constexpr int footerHeight = 36;
     static constexpr int sidebarWidth = 190;
     static constexpr int sidebarHeaderHeight = 36;
