@@ -112,27 +112,35 @@ void EQPlotComponent::updateSpectrumPath() {
     auto w = (float)getWidth();
     auto h = (float)getHeight();
     
-    bool started = false;
     float binStep = (float)audioProcessor.getSampleRate() / (float)eeval::dsp::SpectrumAnalyzer::fftSize;
+
+    // Start from left edge
+    spectrumPath.startNewSubPath(0.0f, h);
+
+    bool hasPoints = false;
+    float lastY = h;
 
     for (int i = 1; i < (int)data.size(); ++i) {
         float freq = (float)i * binStep;
-        if (freq < 20.0f) continue;
         if (freq > 20000.0f) break;
 
-        float x = getXForFreq(freq) * w;
+        float x = getXForFreq(juce::jmax(freq, 20.0f)) * w;
         float y = juce::jmap<float>(data[i], -100.0f, 0.0f, h, 0.0f);
+        y = juce::jlimit(0.0f, h, y);
 
-        if (!started) {
-            spectrumPath.startNewSubPath(x, h);
+        if (!hasPoints) {
+            // Extend the first data point to the left edge
+            spectrumPath.lineTo(0.0f, y);
             spectrumPath.lineTo(x, y);
-            started = true;
+            hasPoints = true;
         } else {
             spectrumPath.lineTo(x, y);
         }
+        lastY = y;
     }
     
-    if (started) {
+    if (hasPoints) {
+        spectrumPath.lineTo(w, lastY);
         spectrumPath.lineTo(w, h);
         spectrumPath.closeSubPath();
     }
