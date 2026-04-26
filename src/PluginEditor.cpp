@@ -1,6 +1,11 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+// Access JUCE standalone holder for device management
+#if JucePlugin_Build_Standalone
+ #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
+#endif
+
 EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
@@ -12,6 +17,7 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     // Header buttons
     addAndMakeVisible(presetBtn);
     addAndMakeVisible(bypassBtn);
+    addAndMakeVisible(monitorBtn);
     addAndMakeVisible(addEffectBtn);
 
     presetBtn.onClick = [this] { showPresetMenu(); };
@@ -20,15 +26,31 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     bypassBtn.setClickingTogglesState(true);
     bypassBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFFE53935));
     bypassBtn.onClick = [this] {
-        bool bypassed = bypassBtn.getToggleState();
-        audioProcessor.setGlobalBypass(bypassed);
+        audioProcessor.setGlobalBypass(bypassBtn.getToggleState());
     };
+
+    // Monitor button - toggles output device
+    monitorBtn.setClickingTogglesState(true);
+    monitorBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFF43A047));
+    monitorBtn.onClick = [this] { toggleMonitor(); };
+
+    // Load saved monitor device from settings
+#if JucePlugin_Build_Standalone
+    if (auto* holder = juce::StandalonePluginHolder::getInstance()) {
+        if (auto* props = holder->settings.get())
+            monitorDeviceName = props->getValue("monitorDevice", "");
+    }
+#endif
 
     // Preset name label
     presetNameLabel.setFont(juce::Font(14.0f));
     presetNameLabel.setColour(juce::Label::textColourId, eeval::theme::textSecondary);
     presetNameLabel.setJustificationType(juce::Justification::centred);
     addAndMakeVisible(presetNameLabel);
+
+    // FFT Analyzer
+    fftAnalyzer = std::make_unique<eeval::ui::SpectrumAnalyzerEditor>(audioProcessor);
+    addAndMakeVisible(fftAnalyzer.get());
 
     // Sidebar
     moduleList.setModel(this);
@@ -49,11 +71,15 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
         moduleList.selectRow(0, false, true);
 
     rebuildEditorView();
-    startTimerHz(10); // 10Hz for UI state updates
+    startTimerHz(10);
 }
 
 EasyEffectsAudioProcessorEditor::~EasyEffectsAudioProcessorEditor()
 {
+    // If monitoring, restore original device before closing
+    if (isMonitoring)
+        toggleMonitor();
+
     stopTimer();
     currentEditor.reset();
     moduleList.setModel(nullptr);
@@ -73,7 +99,7 @@ void EasyEffectsAudioProcessorEditor::timerCallback()
     }
     presetNameLabel.setText(label, juce::dontSendNotification);
 
-    // Update bypass button visual
+    // Sync bypass button
     bypassBtn.setToggleState(audioProcessor.getGlobalBypass(), juce::dontSendNotification);
 }
 
@@ -91,7 +117,7 @@ void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
     g.drawText("Easy Effects", 15, 0, 140, headerHeight, juce::Justification::centredLeft);
 
     // Sidebar background
-    int sidebarTop = headerHeight;
+    int sidebarTop = headerHeight + fftHeight;
     int sidebarH = getHeight() - sidebarTop - footerHeight;
     g.setColour(eeval::theme::bgSurface);
     g.fillRect(0, sidebarTop, sidebarWidth, sidebarH);
@@ -106,18 +132,30 @@ void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
     g.setColour(eeval::theme::borderSubtle);
     g.fillRect(0, getHeight() - footerHeight, getWidth(), 1);
 
-    // Footer text - show sample rate and audio device info
     g.setColour(eeval::theme::textSecondary);
     g.setFont(12.0f);
     juce::String footerText = juce::String(audioProcessor.getSampleRate() / 1000.0, 1) + " kHz | EasyEffects Windows";
-    g.drawText(footerText, 15, getHeight() - footerHeight, 350, footerHeight,
+
+    // Show current output device info
+#if JucePlugin_Build_Standalone
+    if (auto* holder = juce::StandalonePluginHolder::getInstance()) {
+        if (auto* device = holder->deviceManager.getCurrentAudioDevice()) {
+            footerText = juce::String(device->getCurrentSampleRate() / 1000.0, 1) + " kHz";
+            footerText += " | Out: " + device->getOutputChannelNames()[0];
+        }
+    }
+#endif
+
+    g.drawText(footerText, 15, getHeight() - footerHeight, getWidth() - 30, footerHeight,
                juce::Justification::centredLeft);
 
-    // Monitor hint in footer
-    g.setColour(eeval::theme::textSecondary.withAlpha(0.6f));
-    g.drawText(juce::CharPointer_UTF8("\xf0\x9f\x94\x8a Use Options button to set Input/Output devices"),
-               getWidth() - 380, getHeight() - footerHeight, 370, footerHeight,
-               juce::Justification::centredRight);
+    // Monitor device indicator on the right
+    if (isMonitoring) {
+        g.setColour(juce::Colour(0xFF43A047));
+        g.drawText(">> Monitoring: " + monitorDeviceName,
+                   getWidth() / 2, getHeight() - footerHeight, getWidth() / 2 - 15, footerHeight,
+                   juce::Justification::centredRight);
+    }
 }
 
 void EasyEffectsAudioProcessorEditor::resized()
@@ -126,18 +164,23 @@ void EasyEffectsAudioProcessorEditor::resized()
 
     // Header
     auto header = area.removeFromTop(headerHeight);
-    header.removeFromLeft(150); // space for "Easy Effects" title
+    header.removeFromLeft(150);
 
-    // Header layout: [Preset Name] [Presets] [Bypass All] ... [right padding]
     auto headerRight = header.reduced(5, 10);
-    bypassBtn.setBounds(headerRight.removeFromRight(100));
-    headerRight.removeFromRight(8);
-    presetBtn.setBounds(headerRight.removeFromRight(80));
-    headerRight.removeFromRight(8);
+    monitorBtn.setBounds(headerRight.removeFromRight(85));
+    headerRight.removeFromRight(5);
+    bypassBtn.setBounds(headerRight.removeFromRight(90));
+    headerRight.removeFromRight(5);
+    presetBtn.setBounds(headerRight.removeFromRight(75));
+    headerRight.removeFromRight(5);
     presetNameLabel.setBounds(headerRight);
 
     // Footer
-    area.removeFromBottom(footerHeight);
+    auto footer = area.removeFromBottom(footerHeight);
+
+    // FFT Analyzer
+    if (fftAnalyzer)
+        fftAnalyzer->setBounds(area.removeFromTop(fftHeight).reduced(2, 2));
 
     // Sidebar area = add button + list
     auto sidebarArea = area.removeFromLeft(sidebarWidth);
@@ -152,19 +195,83 @@ void EasyEffectsAudioProcessorEditor::resized()
     }
 }
 
+// --- Monitor Toggle ---
+
+void EasyEffectsAudioProcessorEditor::toggleMonitor()
+{
+#if JucePlugin_Build_Standalone
+    auto* holder = juce::StandalonePluginHolder::getInstance();
+    if (!holder) return;
+
+    auto& dm = holder->deviceManager;
+
+    if (!isMonitoring) {
+        // Check if monitor device is configured
+        if (monitorDeviceName.isEmpty()) {
+            // Prompt user to choose a monitor device
+            juce::PopupMenu menu;
+            menu.addSectionHeader("Choose Monitor Output Device:");
+
+            auto* currentDevice = dm.getCurrentAudioDevice();
+            auto* deviceType = currentDevice ? dm.getCurrentDeviceTypeObject() : nullptr;
+            
+            juce::StringArray outputDevices;
+            if (deviceType)
+                outputDevices = deviceType->getDeviceNames(false);
+
+            for (int i = 0; i < outputDevices.size(); ++i)
+                menu.addItem(i + 1, outputDevices[i]);
+
+            menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&monitorBtn),
+                [this, outputDevices](int result) {
+                    if (result > 0) {
+                        monitorDeviceName = outputDevices[result - 1];
+                        // Save to settings
+                    #if JucePlugin_Build_Standalone
+                        if (auto* h = juce::StandalonePluginHolder::getInstance())
+                            if (auto* props = h->settings.get())
+                                props->setValue("monitorDevice", monitorDeviceName);
+                    #endif
+                        // Now actually toggle
+                        monitorBtn.setToggleState(true, juce::dontSendNotification);
+                        toggleMonitor();
+                    } else {
+                        monitorBtn.setToggleState(false, juce::dontSendNotification);
+                    }
+                });
+            return;
+        }
+
+        // Save current output device
+        auto config = dm.getAudioDeviceSetup();
+        savedOutputDevice = config.outputDeviceName;
+
+        // Switch to monitor device
+        config.outputDeviceName = monitorDeviceName;
+        dm.setAudioDeviceSetup(config, true);
+
+        isMonitoring = true;
+    } else {
+        // Restore original output device
+        auto config = dm.getAudioDeviceSetup();
+        config.outputDeviceName = savedOutputDevice;
+        dm.setAudioDeviceSetup(config, true);
+
+        isMonitoring = false;
+    }
+    repaint();
+#endif
+}
+
 // --- ListBoxModel ---
 
 int EasyEffectsAudioProcessorEditor::getNumRows() {
     return (int)activeSlots.size();
 }
 
-void EasyEffectsAudioProcessorEditor::paintListBoxItem(int, juce::Graphics&, int, int, bool) {
-    // Custom painting handled by SidebarRowCustomComponent
-}
+void EasyEffectsAudioProcessorEditor::paintListBoxItem(int, juce::Graphics&, int, int, bool) {}
 
 juce::Component* EasyEffectsAudioProcessorEditor::refreshComponentForRow(int rowNumber, bool isRowSelected, juce::Component* existing) {
-    // Always delete and recreate — after reorder/remove, existing components
-    // have stale slot indices, type IDs, and callbacks
     delete existing;
 
     if (rowNumber < 0 || rowNumber >= (int)activeSlots.size())
@@ -213,7 +320,6 @@ void EasyEffectsAudioProcessorEditor::refreshSidebar() {
     moduleList.updateContent();
     moduleList.repaint();
 
-    // Adjust selection
     int sel = audioProcessor.getSelectedEditorIndex();
     if (sel >= (int)activeSlots.size())
         sel = juce::jmax(0, (int)activeSlots.size() - 1);
@@ -252,32 +358,31 @@ void EasyEffectsAudioProcessorEditor::showPresetMenu() {
     auto& pm = audioProcessor.getPresetManager();
     juce::PopupMenu menu;
 
-    // Save (overwrite current or prompt if no active preset)
     menu.addItem(1, "Save" + juce::String(pm.hasActivePreset() ? " (" + pm.getActivePresetName() + ")" : ""));
     menu.addItem(2, "Save As...");
     menu.addSeparator();
 
-    // Load submenu
     auto list = pm.getGlobalPresetList();
     juce::PopupMenu loadMenu;
     for (int i = 0; i < list.size(); ++i)
         loadMenu.addItem(100 + i, list[i]);
     menu.addSubMenu("Load", loadMenu, list.size() > 0);
 
-    // Delete submenu
     juce::PopupMenu deleteMenu;
     for (int i = 0; i < list.size(); ++i)
         deleteMenu.addItem(200 + i, list[i]);
     menu.addSubMenu("Delete", deleteMenu, list.size() > 0);
 
+    // Monitor device setting
+    menu.addSeparator();
+    menu.addItem(3, "Set Monitor Device...");
+
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBtn),
         [this, &pm, list](int result) {
             if (result == 1) {
-                // Save: overwrite active preset, or prompt if none
                 if (pm.hasActivePreset()) {
                     pm.saveGlobalPreset(pm.getActivePresetName());
                 } else {
-                    // Prompt for name (same as Save As)
                     auto* aw = new juce::AlertWindow("Save Preset", "Enter preset name:", juce::MessageBoxIconType::NoIcon);
                     aw->addTextEditor("name", "", "Name:");
                     aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -292,7 +397,6 @@ void EasyEffectsAudioProcessorEditor::showPresetMenu() {
                     }));
                 }
             } else if (result == 2) {
-                // Save As: always prompt
                 auto* aw = new juce::AlertWindow("Save Preset As", "Enter new preset name:", juce::MessageBoxIconType::NoIcon);
                 aw->addTextEditor("name", "", "Name:");
                 aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
@@ -305,8 +409,33 @@ void EasyEffectsAudioProcessorEditor::showPresetMenu() {
                     }
                     delete aw;
                 }));
+            } else if (result == 3) {
+                // Set monitor device
+            #if JucePlugin_Build_Standalone
+                auto* holder = juce::StandalonePluginHolder::getInstance();
+                if (!holder) return;
+
+                juce::PopupMenu deviceMenu;
+                auto* deviceType = holder->deviceManager.getCurrentDeviceTypeObject();
+                juce::StringArray outputDevices;
+                if (deviceType)
+                    outputDevices = deviceType->getDeviceNames(false);
+
+                for (int i = 0; i < outputDevices.size(); ++i) {
+                    bool isCurrent = (outputDevices[i] == monitorDeviceName);
+                    deviceMenu.addItem(i + 1, outputDevices[i], true, isCurrent);
+                }
+
+                deviceMenu.showMenuAsync({}, [this, outputDevices](int r) {
+                    if (r > 0) {
+                        monitorDeviceName = outputDevices[r - 1];
+                        if (auto* h = juce::StandalonePluginHolder::getInstance())
+                            if (auto* props = h->settings.get())
+                                props->setValue("monitorDevice", monitorDeviceName);
+                    }
+                });
+            #endif
             } else if (result >= 200 && result < 300) {
-                // Delete with confirmation
                 auto name = list[result - 200].toStdString();
                 auto opts = juce::MessageBoxOptions()
                     .withIconType(juce::MessageBoxIconType::WarningIcon)
@@ -315,12 +444,10 @@ void EasyEffectsAudioProcessorEditor::showPresetMenu() {
                     .withButton("Delete")
                     .withButton("Cancel");
                 juce::AlertWindow::showAsync(opts, [this, name](int r) {
-                    if (r == 1) {
+                    if (r == 1)
                         audioProcessor.getPresetManager().deleteGlobalPreset(name);
-                    }
                 });
             } else if (result >= 100 && result < 200) {
-                // Load
                 pm.loadGlobalPreset(list[result - 100].toStdString());
                 refreshSidebar();
             }
@@ -331,9 +458,8 @@ void EasyEffectsAudioProcessorEditor::showAddEffectMenu() {
     juce::PopupMenu menu;
     const auto& types = eeval::EffectRegistry::getEffectTypes();
 
-    for (int i = 0; i < (int)types.size(); ++i) {
+    for (int i = 0; i < (int)types.size(); ++i)
         menu.addItem(i + 1, types[(size_t)i].displayName);
-    }
 
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addEffectBtn),
         [this](int result) {
