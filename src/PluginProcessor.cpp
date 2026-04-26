@@ -294,8 +294,9 @@ void EasyEffectsAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, j
     // Update parameter values from APVTS into DSP modules
     dspChain.updateParameters(parameters);
 
-    // Execute DSP chain
-    dspChain.process(buffer);
+    // Execute DSP chain (skip if globally bypassed)
+    if (!globalBypass.load())
+        dspChain.process(buffer);
 
     // Push final output to FFT analyzer
     if (buffer.getNumChannels() > 0) {

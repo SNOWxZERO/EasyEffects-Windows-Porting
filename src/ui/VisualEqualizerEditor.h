@@ -12,6 +12,7 @@ namespace ui {
 
 /**
  * VisualEqualizerEditor - SteelSeries-style interactive EQ editor.
+ * Now includes per-module preset support.
  */
 class VisualEqualizerEditor : public juce::Component {
 public:
@@ -30,9 +31,11 @@ private:
     std::vector<std::unique_ptr<EQNodeComponent>> nodes;
     
     juce::TextButton addBandBtn { "+ Add Band" };
+    juce::TextButton presetBtn  { "Presets" };
     juce::Label titleLabel;
 
     void addNextBand();
+    void showPresetMenu();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VisualEqualizerEditor)
 };

@@ -61,6 +61,10 @@ public:
     // Analyzer Access
     eeval::dsp::SpectrumAnalyzer& getSpectrumAnalyzer() { return spectrumAnalyzer; }
 
+    // Global Bypass (A/B comparison)
+    void setGlobalBypass(bool bypass) { globalBypass.store(bypass); }
+    bool getGlobalBypass() const { return globalBypass.load(); }
+
     int getNumPrograms() override;
     int getCurrentProgram() override;
     void setCurrentProgram(int index) override;
@@ -79,6 +83,7 @@ private:
     eeval::LevelMeterModule* levelMeterPtr = nullptr;
     std::unique_ptr<eeval::PresetManager> presetManager;
     eeval::dsp::SpectrumAnalyzer spectrumAnalyzer;
+    std::atomic<bool> globalBypass { false };
     int selectedEditorIndex = 0;
 
     // Rebuild the DSP chain from current slot type parameters

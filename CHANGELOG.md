@@ -1,5 +1,22 @@
 # Changelog - EasyEffects Windows
 
+## [Phase 12] - UX Polish, Bypass & Preset Overhaul
+### Added
+- **Global Chain Bypass**: Toggle button to bypass the entire effect chain for A/B comparison.
+- **Preset Workflow Overhaul**: Active preset tracking, Save (overwrite), Save As (new name), Delete.
+- **Active Preset Label**: Header shows current preset name with `*` dirty indicator.
+- **EQ Presets**: Parametric Equalizer now has its own Presets button with Save/Load/Delete.
+- **Module Preset Delete**: All per-module preset menus now support deleting presets.
+- **Audio Device Hint**: Footer shows reminder for I/O device selection.
+
+### Removed
+- **Broken Footer Meter**: Non-functional `-100 dB` level meter.
+- **Redundant FFT Bar**: Global spectrum analyzer bar (FFT is in the EQ plot).
+
+### Fixed
+- **Preset Overwrite**: Saving now properly overwrites existing files.
+- **Async Dialogs**: All confirmation dialogs use async patterns.
+
 ## [Phase 11] - Professional Analytics & Modular Presets
 ### Added
 - **Real-Time FFT Spectrum Analyzer**: Integrated into the Visual EQ and global dashboard.

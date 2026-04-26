@@ -10,44 +10,25 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     activeSlots = audioProcessor.getActiveSlots();
 
     // Header buttons
-    addAndMakeVisible(savePresetBtn);
-    addAndMakeVisible(loadPresetBtn);
+    addAndMakeVisible(presetBtn);
+    addAndMakeVisible(bypassBtn);
     addAndMakeVisible(addEffectBtn);
 
+    presetBtn.onClick = [this] { showPresetMenu(); };
     addEffectBtn.onClick = [this] { showAddEffectMenu(); };
 
-    savePresetBtn.onClick = [this] {
-        auto* aw = new juce::AlertWindow("Save Global Preset", "Enter preset name:", juce::MessageBoxIconType::NoIcon);
-        aw->addTextEditor("name", "", "Preset Name:");
-        aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
-        aw->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
-        
-        aw->enterModalState(true, juce::ModalCallbackFunction::create([this, aw](int result) {
-            if (result == 1) {
-                auto name = aw->getTextEditorContents("name");
-                if (name.isNotEmpty()) {
-                    audioProcessor.getPresetManager().saveGlobalPreset(name.toStdString());
-                }
-            }
-            delete aw;
-        }));
+    bypassBtn.setClickingTogglesState(true);
+    bypassBtn.setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xFFE53935));
+    bypassBtn.onClick = [this] {
+        bool bypassed = bypassBtn.getToggleState();
+        audioProcessor.setGlobalBypass(bypassed);
     };
 
-    loadPresetBtn.onClick = [this] {
-        juce::PopupMenu menu;
-        auto list = audioProcessor.getPresetManager().getGlobalPresetList();
-        
-        for (int i = 0; i < list.size(); ++i)
-            menu.addItem(i + 1, list[i]);
-
-        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadPresetBtn),
-            [this, list](int result) {
-                if (result > 0) {
-                    audioProcessor.getPresetManager().loadGlobalPreset(list[result - 1].toStdString());
-                    refreshSidebar();
-                }
-            });
-    };
+    // Preset name label
+    presetNameLabel.setFont(juce::Font(14.0f));
+    presetNameLabel.setColour(juce::Label::textColourId, eeval::theme::textSecondary);
+    presetNameLabel.setJustificationType(juce::Justification::centred);
+    addAndMakeVisible(presetNameLabel);
 
     // Sidebar
     moduleList.setModel(this);
@@ -60,14 +41,6 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
     viewport.setScrollBarThickness(8);
     addAndMakeVisible(viewport);
 
-    // Footer
-    globalFooterMeter = std::make_unique<eeval::ui::LevelMeterEditor>(audioProcessor.getLevelMeter());
-    addAndMakeVisible(globalFooterMeter.get());
-
-    // FFT
-    fftAnalyzer = std::make_unique<eeval::ui::SpectrumAnalyzerEditor>(audioProcessor);
-    addAndMakeVisible(fftAnalyzer.get());
-
     // Select first row
     int lastSelected = audioProcessor.getSelectedEditorIndex();
     if (lastSelected >= 0 && lastSelected < (int)activeSlots.size())
@@ -76,13 +49,32 @@ EasyEffectsAudioProcessorEditor::EasyEffectsAudioProcessorEditor(EasyEffectsAudi
         moduleList.selectRow(0, false, true);
 
     rebuildEditorView();
+    startTimerHz(10); // 10Hz for UI state updates
 }
 
 EasyEffectsAudioProcessorEditor::~EasyEffectsAudioProcessorEditor()
 {
+    stopTimer();
     currentEditor.reset();
     moduleList.setModel(nullptr);
     setLookAndFeel(nullptr);
+}
+
+void EasyEffectsAudioProcessorEditor::timerCallback()
+{
+    // Update preset name label
+    auto& pm = audioProcessor.getPresetManager();
+    juce::String label;
+    if (pm.hasActivePreset()) {
+        label = juce::String(pm.getActivePresetName());
+        if (pm.isDirty()) label += " *";
+    } else {
+        label = "(No Preset)";
+    }
+    presetNameLabel.setText(label, juce::dontSendNotification);
+
+    // Update bypass button visual
+    bypassBtn.setToggleState(audioProcessor.getGlobalBypass(), juce::dontSendNotification);
 }
 
 void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
@@ -96,10 +88,10 @@ void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillRect(0, headerHeight - 1, getWidth(), 1);
     g.setColour(eeval::theme::textPrimary);
     g.setFont(18.0f);
-    g.drawText("Easy Effects", 15, 0, 200, headerHeight, juce::Justification::centredLeft);
+    g.drawText("Easy Effects", 15, 0, 140, headerHeight, juce::Justification::centredLeft);
 
     // Sidebar background
-    int sidebarTop = headerHeight + fftHeight;
+    int sidebarTop = headerHeight;
     int sidebarH = getHeight() - sidebarTop - footerHeight;
     g.setColour(eeval::theme::bgSurface);
     g.fillRect(0, sidebarTop, sidebarWidth, sidebarH);
@@ -113,10 +105,19 @@ void EasyEffectsAudioProcessorEditor::paint(juce::Graphics& g)
     g.fillRect(0, getHeight() - footerHeight, getWidth(), footerHeight);
     g.setColour(eeval::theme::borderSubtle);
     g.fillRect(0, getHeight() - footerHeight, getWidth(), 1);
+
+    // Footer text - show sample rate and audio device info
     g.setColour(eeval::theme::textSecondary);
     g.setFont(12.0f);
-    g.drawText("48.0 kHz | EasyEffects Windows", 15, getHeight() - footerHeight, 250, footerHeight,
+    juce::String footerText = juce::String(audioProcessor.getSampleRate() / 1000.0, 1) + " kHz | EasyEffects Windows";
+    g.drawText(footerText, 15, getHeight() - footerHeight, 350, footerHeight,
                juce::Justification::centredLeft);
+
+    // Monitor hint in footer
+    g.setColour(eeval::theme::textSecondary.withAlpha(0.6f));
+    g.drawText(juce::CharPointer_UTF8("\xf0\x9f\x94\x8a Use Options button to set Input/Output devices"),
+               getWidth() - 380, getHeight() - footerHeight, 370, footerHeight,
+               juce::Justification::centredRight);
 }
 
 void EasyEffectsAudioProcessorEditor::resized()
@@ -125,18 +126,18 @@ void EasyEffectsAudioProcessorEditor::resized()
 
     // Header
     auto header = area.removeFromTop(headerHeight);
-    auto headerRight = header.removeFromRight(400);
-    loadPresetBtn.setBounds(headerRight.removeFromRight(120).reduced(8, 10));
-    savePresetBtn.setBounds(headerRight.removeFromRight(120).reduced(8, 10));
+    header.removeFromLeft(150); // space for "Easy Effects" title
+
+    // Header layout: [Preset Name] [Presets] [Bypass All] ... [right padding]
+    auto headerRight = header.reduced(5, 10);
+    bypassBtn.setBounds(headerRight.removeFromRight(100));
+    headerRight.removeFromRight(8);
+    presetBtn.setBounds(headerRight.removeFromRight(80));
+    headerRight.removeFromRight(8);
+    presetNameLabel.setBounds(headerRight);
 
     // Footer
-    auto footer = area.removeFromBottom(footerHeight);
-    if (globalFooterMeter)
-        globalFooterMeter->setBounds(footer.removeFromRight(350).reduced(5, 4));
-
-    // FFT
-    if (fftAnalyzer)
-        fftAnalyzer->setBounds(area.removeFromTop(fftHeight).reduced(2, 2));
+    area.removeFromBottom(footerHeight);
 
     // Sidebar area = add button + list
     auto sidebarArea = area.removeFromLeft(sidebarWidth);
@@ -232,7 +233,6 @@ void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
     }
 
     const auto& slot = activeSlots[(size_t)index];
-    std::string slotPrefix = eeval::EffectRegistry::slotPrefix(slot.slotIndex);
 
     viewport.setViewedComponent(nullptr, false);
     
@@ -246,6 +246,85 @@ void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
 
     viewport.setViewedComponent(currentEditor.get(), false);
     resized();
+}
+
+void EasyEffectsAudioProcessorEditor::showPresetMenu() {
+    auto& pm = audioProcessor.getPresetManager();
+    juce::PopupMenu menu;
+
+    // Save (overwrite current or prompt if no active preset)
+    menu.addItem(1, "Save" + juce::String(pm.hasActivePreset() ? " (" + pm.getActivePresetName() + ")" : ""));
+    menu.addItem(2, "Save As...");
+    menu.addSeparator();
+
+    // Load submenu
+    auto list = pm.getGlobalPresetList();
+    juce::PopupMenu loadMenu;
+    for (int i = 0; i < list.size(); ++i)
+        loadMenu.addItem(100 + i, list[i]);
+    menu.addSubMenu("Load", loadMenu, list.size() > 0);
+
+    // Delete submenu
+    juce::PopupMenu deleteMenu;
+    for (int i = 0; i < list.size(); ++i)
+        deleteMenu.addItem(200 + i, list[i]);
+    menu.addSubMenu("Delete", deleteMenu, list.size() > 0);
+
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&presetBtn),
+        [this, &pm, list](int result) {
+            if (result == 1) {
+                // Save: overwrite active preset, or prompt if none
+                if (pm.hasActivePreset()) {
+                    pm.saveGlobalPreset(pm.getActivePresetName());
+                } else {
+                    // Prompt for name (same as Save As)
+                    auto* aw = new juce::AlertWindow("Save Preset", "Enter preset name:", juce::MessageBoxIconType::NoIcon);
+                    aw->addTextEditor("name", "", "Name:");
+                    aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                    aw->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                    aw->enterModalState(true, juce::ModalCallbackFunction::create([this, aw](int res) {
+                        if (res == 1) {
+                            auto name = aw->getTextEditorContents("name").toStdString();
+                            if (!name.empty())
+                                audioProcessor.getPresetManager().saveGlobalPreset(name);
+                        }
+                        delete aw;
+                    }));
+                }
+            } else if (result == 2) {
+                // Save As: always prompt
+                auto* aw = new juce::AlertWindow("Save Preset As", "Enter new preset name:", juce::MessageBoxIconType::NoIcon);
+                aw->addTextEditor("name", "", "Name:");
+                aw->addButton("Save", 1, juce::KeyPress(juce::KeyPress::returnKey));
+                aw->addButton("Cancel", 0, juce::KeyPress(juce::KeyPress::escapeKey));
+                aw->enterModalState(true, juce::ModalCallbackFunction::create([this, aw](int res) {
+                    if (res == 1) {
+                        auto name = aw->getTextEditorContents("name").toStdString();
+                        if (!name.empty())
+                            audioProcessor.getPresetManager().saveGlobalPreset(name);
+                    }
+                    delete aw;
+                }));
+            } else if (result >= 200 && result < 300) {
+                // Delete with confirmation
+                auto name = list[result - 200].toStdString();
+                auto opts = juce::MessageBoxOptions()
+                    .withIconType(juce::MessageBoxIconType::WarningIcon)
+                    .withTitle("Delete Preset")
+                    .withMessage("Delete \"" + juce::String(name) + "\"?")
+                    .withButton("Delete")
+                    .withButton("Cancel");
+                juce::AlertWindow::showAsync(opts, [this, name](int r) {
+                    if (r == 1) {
+                        audioProcessor.getPresetManager().deleteGlobalPreset(name);
+                    }
+                });
+            } else if (result >= 100 && result < 200) {
+                // Load
+                pm.loadGlobalPreset(list[result - 100].toStdString());
+                refreshSidebar();
+            }
+        });
 }
 
 void EasyEffectsAudioProcessorEditor::showAddEffectMenu() {
@@ -265,7 +344,6 @@ void EasyEffectsAudioProcessorEditor::showAddEffectMenu() {
                     int slotIdx = audioProcessor.addEffect(types[(size_t)idx].typeId);
                     if (slotIdx >= 0) {
                         refreshSidebar();
-                        // Select the newly added effect
                         int newRow = (int)activeSlots.size() - 1;
                         audioProcessor.setSelectedEditorIndex(newRow);
                         moduleList.selectRow(newRow, false, true);
