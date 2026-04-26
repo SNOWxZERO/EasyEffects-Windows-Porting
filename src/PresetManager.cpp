@@ -80,8 +80,10 @@ void PresetManager::deserializeChain(const juce::var& json) {
 
     auto slots = root->getProperty("slots").getArray();
     
-    // 1. Clear current chain
-    for (int i = 0; i < 16; ++i) processor.removeEffect(i);
+    // 1. Clear current chain robustly (since removeEffect compacts the chain)
+    while (processor.getActiveSlots().size() > 0) {
+        processor.removeEffect(0);
+    }
 
     // 2. Rebuild
     for (int i = 0; i < slots->size(); ++i) {
@@ -133,7 +135,18 @@ void PresetManager::saveModulePreset(int slotIndex, const std::string& name) {
                     if (auto* val = processor.parameters.getRawParameterValue(id))
                         paramsObj->setProperty(juce::String(p.suffix), val->load());
                 }
+                for (const auto& c : desc->choices) {
+                    std::string id = prefix + "." + slot.typeId + "." + c.suffix;
+                    if (auto* val = processor.parameters.getRawParameterValue(id))
+                        paramsObj->setProperty(juce::String(c.suffix), val->load());
+                }
             }
+            
+            // Slot mix
+            std::string mixId = prefix + ".mix";
+            if (auto* val = processor.parameters.getRawParameterValue(mixId))
+                paramsObj->setProperty("mix", val->load());
+
             sObj->setProperty("params", paramsObj.get());
 
             auto file = getPresetFolder(false).getChildFile(slot.typeId).getChildFile(name + ".json");
@@ -160,7 +173,11 @@ void PresetManager::loadModulePreset(int slotIndex, const std::string& name) {
                 if (auto* paramData = params.getDynamicObject()) {
                     std::string prefix = EffectRegistry::slotPrefix(slotIndex);
                     for (auto& prop : paramData->getProperties()) {
-                        std::string fullId = prefix + "." + slot.typeId + "." + prop.name.toString().toStdString();
+                        std::string suffix = prop.name.toString().toStdString();
+                        std::string fullId;
+                        if (suffix == "mix") fullId = prefix + ".mix";
+                        else fullId = prefix + "." + slot.typeId + "." + suffix;
+
                         if (auto* p = processor.parameters.getParameter(fullId))
                             p->setValueNotifyingHost(p->getNormalisableRange().convertTo0to1((float)prop.value));
                     }
