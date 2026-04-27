@@ -2,7 +2,7 @@
 
 A native Windows audio effects processor inspired by [EasyEffects](https://github.com/wwmm/easyeffects) for Linux.
 
-![EasyEffects Windows Screenshot](placeholder_for_real_screenshot.png) *(Please provide a real screenshot of the application running)*
+![EasyEffects Windows Screenshot](screenshots/MainApp.png)
 
 ## ⚠️ What this project IS
 A real-time, modular DSP audio processing chain for Windows, built with C++ and JUCE. It provides 25+ professional audio effects, spectrum analysis, and flexible routing.
