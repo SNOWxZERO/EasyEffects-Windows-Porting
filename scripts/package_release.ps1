@@ -3,7 +3,7 @@ param(
     [switch]$NoZip
 )
 
-$RootDir = (Get-Item -Path ".\").FullName
+$RootDir = (Get-Item -Path "$PSScriptRoot\..").FullName
 $ReleaseFolder = Join-Path $RootDir "releases"
 if (-not (Test-Path $ReleaseFolder)) {
     New-Item -ItemType Directory -Force -Path $ReleaseFolder | Out-Null
