@@ -1,4 +1,4 @@
-# EasyEffects Windows (V2)
+# EasyEffects Windows Porting
 
 A native Windows audio effects processor inspired by [EasyEffects](https://github.com/wwmm/easyeffects) for Linux.
 

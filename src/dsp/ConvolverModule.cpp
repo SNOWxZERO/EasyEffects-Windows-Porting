@@ -37,14 +37,17 @@ void ConvolverModule::loadImpulseResponse(const juce::File& file) {
         irPath.clear();
         irName.clear();
         hasIRLoaded = false;
-        // Optionally notify user
-        juce::MessageManager::callAsync([file]() {
-            juce::AlertWindow::showMessageBoxAsync(
-                juce::AlertWindow::WarningIcon,
-                "Impulse Response Missing",
-                "Could not find IR file: " + file.getFullPathName() + "\nConvolver bypassed."
-            );
-        });
+        
+        // Only notify if they actually tried to load a specific file (not when clearing)
+        if (file != juce::File()) {
+            juce::MessageManager::callAsync([file]() {
+                juce::AlertWindow::showMessageBoxAsync(
+                    juce::AlertWindow::WarningIcon,
+                    "Impulse Response Missing",
+                    "Could not find IR file: " + file.getFullPathName() + "\nConvolver bypassed."
+                );
+            });
+        }
         return;
     }
     
