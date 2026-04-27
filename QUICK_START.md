@@ -18,13 +18,26 @@ Use the left sidebar to add effects like EQ, Compressor, or Noise Reduction.
 
 ---
 
+## 🎙️ Microphone Audio Setup (Voice Processing)
+
+To apply effects to your microphone before sending it to Discord, Zoom, or OBS:
+
+1. **Install a Virtual Audio Cable:** We recommend [VB-Cable (Free)](https://vb-audio.com/Cable/).
+2. **In EasyEffects Audio Settings:**
+   - Set **Input** to your physical microphone.
+   - Set **Output** to `CABLE Input`.
+3. **In your chat application:**
+   - Set your input/microphone device to `CABLE Output`.
+
+---
+
 ## 🎧 System-Wide Audio Routing (Optional)
 
-By default, EasyEffects Windows only processes the direct input you select (like a microphone). It **does not** automatically capture all system audio (like games or Spotify) out-of-the-box.
+By default, EasyEffects Windows only processes the direct input you select. It **does not** automatically capture all system audio (like games or Spotify) out-of-the-box.
 
-To apply effects to your entire system or specific apps (like Discord):
+To apply effects to your entire system's output:
 
-1. **Install a Virtual Audio Cable:** We recommend [VB-Cable (Free)](https://vb-audio.com/Cable/) or Virtual Audio Cable (VAC).
+1. **Install a Virtual Audio Cable:** We recommend [VB-Cable (Free)](https://vb-audio.com/Cable/).
 2. **Set Windows Default Output** to `CABLE Input`.
 3. **In EasyEffects Audio Settings:**
    - Set **Input** to `CABLE Output`
