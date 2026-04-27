@@ -27,3 +27,4 @@ releases/
 .DS_Store
 Thumbs.db
 
+docs/Architecting Windows-Native EasyEffects Port.md
