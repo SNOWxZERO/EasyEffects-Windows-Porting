@@ -32,6 +32,20 @@ A real-time, modular DSP audio processing chain for Windows, built with C++ and 
 
 ---
 
+## 🎙️ Microphone Audio Setup (Voice Processing)
+
+To process your microphone for Discord, Zoom, or OBS:
+
+1. Download and install a free Virtual Audio Cable like [VB-Cable](https://vb-audio.com/Cable/).
+2. Open EasyEffects Windows. Click **Options -> Audio Settings**.
+3. Set **Input** to your physical microphone (e.g., *HyperX QuadCast* or *Focusrite USB*).
+4. Set **Output** to **CABLE Input**.
+5. In your chat application (Discord, Zoom, etc.), set your input device to **CABLE Output**.
+
+Now your microphone is processed by EasyEffects before reaching your chat apps!
+
+---
+
 ## 🎧 System-Wide Audio Setup (Virtual Cable)
 
 To process audio from games, Spotify, or your whole system:
@@ -76,9 +90,19 @@ cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
 
-### 3. Run
-The compiled standalone executable will be located at:
+### 3. Run or Package
+You can run the compiled standalone executable directly:
 `build/EasyEffects_artefacts/Release/Standalone/EasyEffects.exe`
+
+Alternatively, you can use the provided PowerShell script to package the release:
+```powershell
+# Create a folder release
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1 -NoZip
+
+# Or create a Zip archive
+powershell -ExecutionPolicy Bypass -File scripts\package_release.ps1
+```
+The output will be placed in the `releases/` directory.
 
 ---
 
