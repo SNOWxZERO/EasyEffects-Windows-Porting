@@ -44,6 +44,7 @@ private:
     
     juce::var serializeChain();
     void deserializeChain(const juce::var& json);
+    void createDefaultPresetsIfNeeded();
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PresetManager)
 };

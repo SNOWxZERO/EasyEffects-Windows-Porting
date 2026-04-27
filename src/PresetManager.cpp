@@ -1,10 +1,13 @@
 #include "PresetManager.h"
 #include "PluginProcessor.h"
 #include "dsp/EffectRegistry.h"
+#include "DefaultPresets.h"
 
 namespace eeval {
 
-PresetManager::PresetManager(EasyEffectsAudioProcessor& p) : processor(p) {}
+PresetManager::PresetManager(EasyEffectsAudioProcessor& p) : processor(p) {
+    createDefaultPresetsIfNeeded();
+}
 
 juce::File PresetManager::getPresetFolder(bool isGlobal) {
     auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
@@ -13,6 +16,21 @@ juce::File PresetManager::getPresetFolder(bool isGlobal) {
     
     if (!dir.exists()) dir.createDirectory();
     return dir;
+}
+
+void PresetManager::createDefaultPresetsIfNeeded() {
+    auto folder = getPresetFolder(true);
+    if (folder.findChildFiles(juce::File::findFiles, false, "*.json").isEmpty()) {
+        // Generate defaults
+        auto writeDefault = [&](const juce::String& name, const char* content) {
+            auto file = folder.getChildFile(name + ".json");
+            file.replaceWithText(juce::String(content));
+        };
+        writeDefault("Broadcast High Pitch", DefaultPresets::broadcastHighPitch);
+        writeDefault("Deep Voice", DefaultPresets::deepVoice);
+        writeDefault("Walkie Talkie", DefaultPresets::walkieTalkie);
+        writeDefault("Flat", DefaultPresets::flat);
+    }
 }
 
 void PresetManager::saveGlobalPreset(const std::string& name) {
@@ -86,6 +104,15 @@ juce::var PresetManager::serializeChain() {
             paramsObj->setProperty("mix", val->load());
 
         sObj->setProperty("params", paramsObj.get());
+
+        // Custom state
+        if (auto* mod = processor.getChain().getSlotModule(slot.slotIndex)) {
+            auto state = mod->getState();
+            if (!state.isVoid()) {
+                sObj->setProperty("state", state);
+            }
+        }
+
         slotsJson.add(sObj.get());
     }
 
@@ -123,6 +150,13 @@ void PresetManager::deserializeChain(const juce::var& json) {
 
                     if (auto* p = processor.parameters.getParameter(fullId))
                         p->setValueNotifyingHost(p->getNormalisableRange().convertTo0to1((float)prop.value));
+                }
+            }
+
+            auto state = s.getProperty("state", juce::var());
+            if (!state.isVoid()) {
+                if (auto* mod = processor.getChain().getSlotModule(newIdx)) {
+                    mod->setState(state);
                 }
             }
         }
@@ -168,6 +202,14 @@ void PresetManager::saveModulePreset(int slotIndex, const std::string& name) {
 
             sObj->setProperty("params", paramsObj.get());
 
+            // Custom state
+            if (auto* mod = processor.getChain().getSlotModule(slot.slotIndex)) {
+                auto state = mod->getState();
+                if (!state.isVoid()) {
+                    sObj->setProperty("state", state);
+                }
+            }
+
             auto file = getPresetFolder(false).getChildFile(slot.typeId).getChildFile(name + ".json");
             if (!file.getParentDirectory().exists()) file.getParentDirectory().createDirectory();
 
@@ -199,6 +241,13 @@ void PresetManager::loadModulePreset(int slotIndex, const std::string& name) {
 
                         if (auto* p = processor.parameters.getParameter(fullId))
                             p->setValueNotifyingHost(p->getNormalisableRange().convertTo0to1((float)prop.value));
+                    }
+                }
+                
+                auto state = pObj->getProperty("state");
+                if (!state.isVoid()) {
+                    if (auto* mod = processor.getChain().getSlotModule(slot.slotIndex)) {
+                        mod->setState(state);
                     }
                 }
             }

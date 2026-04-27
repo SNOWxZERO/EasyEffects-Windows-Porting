@@ -32,7 +32,27 @@ void ConvolverModule::updateParameters(juce::AudioProcessorValueTreeState& apvts
 }
 
 void ConvolverModule::loadImpulseResponse(const juce::File& file) {
-    if (file.existsAsFile()) {
+    if (!file.existsAsFile()) {
+        // File missing - handle gracefully
+        irPath.clear();
+        irName.clear();
+        hasIRLoaded = false;
+        // Optionally notify user
+        juce::MessageManager::callAsync([file]() {
+            juce::AlertWindow::showMessageBoxAsync(
+                juce::AlertWindow::WarningIcon,
+                "Impulse Response Missing",
+                "Could not find IR file: " + file.getFullPathName() + "\nConvolver bypassed."
+            );
+        });
+        return;
+    }
+    
+    irPath = file.getFullPathName().toStdString();
+    irName = file.getFileName().toStdString();
+
+    // Async off-thread loading to prevent UI blocking
+    juce::Thread::launch([this, file]() {
         convolverNode.loadImpulseResponse(
             file,
             juce::dsp::Convolution::Stereo::yes,
@@ -41,8 +61,26 @@ void ConvolverModule::loadImpulseResponse(const juce::File& file) {
             juce::dsp::Convolution::Normalise::yes
         );
         hasIRLoaded = true;
-    } else {
-        hasIRLoaded = false;
+    });
+}
+
+juce::var ConvolverModule::getState() {
+    juce::DynamicObject::Ptr obj = new juce::DynamicObject();
+    obj->setProperty("ir_path", juce::String(irPath));
+    obj->setProperty("ir_name", juce::String(irName));
+    return juce::var(obj.get());
+}
+
+void ConvolverModule::setState(const juce::var& state) {
+    if (auto* obj = state.getDynamicObject()) {
+        juce::String path = obj->getProperty("ir_path").toString();
+        if (path.isNotEmpty()) {
+            loadImpulseResponse(juce::File(path));
+        } else {
+            irPath.clear();
+            irName.clear();
+            hasIRLoaded = false;
+        }
     }
 }
 

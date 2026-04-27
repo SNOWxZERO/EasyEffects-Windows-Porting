@@ -1,51 +1,95 @@
-# EasyEffects - Windows Port (Development Version)
+# EasyEffects Windows (V2)
 
-This is a Windows-native port of the EasyEffects audio processing engine, rebuilt using JUCE for cross-platform compatibility and real-time stability on Windows/MSVC.
+A native Windows audio effects processor inspired by [EasyEffects](https://github.com/wwmm/easyeffects) for Linux.
 
-## Core Architecture
-- **Engine**: JUCE-based audio processor.
-- **DSP Hierarchy**: Modular `EffectModule` system with support for dynamic slot assignment, dry/wet mixing, and bypass.
-- **Latency Management**: Automatic reporting of module-specific latencies to the host.
+![EasyEffects Windows Screenshot](placeholder_for_real_screenshot.png) *(Please provide a real screenshot of the application running)*
 
-## Supported Effects
+## ⚠️ What this project IS
+A real-time, modular DSP audio processing chain for Windows, built with C++ and JUCE. It provides 25+ professional audio effects, spectrum analysis, and flexible routing.
 
-### Dynamics & Gain
-- **Gain**: Standard output level control.
-- **Compressor**: Soft/Hard knee dynamic range compression.
-- **Gate**: Noise gate with hysteresis.
-- **Expander**: Downward/Upward expansion.
-- **Auto Gain**: Real-time LUFS estimation and normalization.
-- **Limiter**: Brick-wall peak limiting.
-- **Multiband Compressor**: 4th-order Linkwitz-Riley 3-band dynamics.
-- **Multiband Gate**: Frequency-selective gating.
+## ⚠️ What it is NOT
+**This is NOT system-wide by default.** Unlike the Linux version which uses PipeWire to natively hijack all system audio, Windows does not allow this easily. 
+👉 **For system-wide audio processing, you MUST use a Virtual Audio Cable (like VB-Cable).** See the routing guide below.
 
-### EQ & Filters
-- **Equalizer**: Multi-band parametric EQ.
-- **Filter**: Standard LP/HP/BP/Shelf filters.
-- **Convolver**: Impulse Response (IR) processing with zero-latency FFT.
-- **Deesser**: Sibilance reduction.
+---
 
-### Enhancement & Spatial
-- **Bass Enhancer**: Psychoacoustic bass reinforcement.
-- **Exciter**: High-frequency harmonic enhancement.
-- **Stereo Tools**: Width, pan, and phase control.
-- **Reverb**: Algorithmic spatial simulation.
-- **Delay**: Tempo-synced or millisecond delay.
-- **Crystalizer**: Multiband transient enhancement.
-- **Crossfeed**: Headphone spatialization.
-- **Bass Loudness**: Frequency-dependent loudness correction.
+## ✨ Feature Highlights
 
-### Modulation & Special
-- **Chorus**: Multi-voice modulation.
-- **Phaser**: All-pass modulation.
-- **Noise Reduction (RNNoise)**: RNN-based neural noise suppression (Optimized for Windows).
-- **Pitch Shift (SoundTouch)**: High-quality pitch transposition.
+- **Real-time DSP Chain:** Dynamically add, remove, and reorder effects with zero audio stuttering.
+- **25+ Professional Effects:** Including 10-Band Parametric EQ, Compressor, RNNoise (AI Noise Reduction), Pitch Shifter, Exciter, Limiter, and more.
+- **Advanced Analytics:** Real-time 2048-point lock-free FFT Spectrum Analyzer and dynamic I/O metering.
+- **Preset System:** Save and load full chain configurations or per-module presets (JSON based).
+- **Standalone & VST3:** Run as a standalone desktop app or load it as a VST3 plugin in OBS Studio or your favorite DAW.
 
-## Build Requirements
-- **Compiler**: MSVC 2022 (v143).
-- **Framework**: JUCE 7.x.
-- **CMake**: 3.20+.
+---
 
-## Technical Notes (Windows Specific)
-- **RNNoise**: Patched for MSVC compatibility (Replacing VLAs with stack allocation).
-- **SoundTouch**: Integrated via submodule with custom CMake wrapper.
+## 📥 Download & Installation
+
+1. Go to the [Releases](../../releases) page.
+2. Download the latest `EasyEffects-Windows-vX.X.X.zip`.
+3. Extract the folder.
+4. Run `EasyEffects.exe`.
+
+---
+
+## 🎧 System-Wide Audio Setup (Virtual Cable)
+
+To process audio from games, Spotify, or your whole system:
+
+1. Download and install a free Virtual Audio Cable like [VB-Cable](https://vb-audio.com/Cable/).
+2. In Windows Sound Settings, set your Default Playback Device to **CABLE Input**.
+3. Open EasyEffects Windows. Click **Options -> Audio Settings**.
+4. Set **Input** to **CABLE Output**.
+5. Set **Output** to your physical headphones/speakers.
+
+Now, all system audio routes through EasyEffects before reaching your ears!
+
+---
+
+## 🔌 VST3 Installation (For OBS / DAWs)
+
+1. From the release zip, copy the `EasyEffects.vst3` folder.
+2. Paste it into your system's VST3 directory:
+   `C:\Program Files\Common Files\VST3\`
+3. Restart OBS Studio or your DAW, and EasyEffects will appear in your plugins list.
+
+---
+
+## 🛠️ Build from Source
+
+You will need:
+- Windows 10/11
+- Visual Studio 2022 (or newer) with C++ Desktop Development tools
+- CMake (3.24+)
+- Git
+
+### 1. Clone the repository and submodules
+```bash
+git clone https://github.com/YOUR_USERNAME/easyeffects-windows.git
+cd easyeffects-windows
+git submodule update --init --recursive
+```
+
+### 2. Generate and Build
+```bash
+cmake -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+```
+
+### 3. Run
+The compiled standalone executable will be located at:
+`build/EasyEffects_artefacts/Release/Standalone/EasyEffects.exe`
+
+---
+
+## ⚖️ License & Compliance
+
+This project is licensed under the **GNU General Public License v3.0 (GPLv3)**. See the `LICENSE` file for details.
+
+**External Libraries:**
+- [JUCE Framework](https://juce.com/) (GPLv3 for open source)
+- [RNNoise](https://github.com/xiph/rnnoise) (BSD 3-Clause)
+- [SoundTouch](https://codeberg.org/soundtouch/soundtouch) (LGPL) - Dynamically linked where applicable or utilized under LGPL compliance terms.
+
+---
+*Disclaimer: This project is an independent Windows port and is not directly affiliated with the original EasyEffects Linux developers.*

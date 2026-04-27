@@ -24,6 +24,10 @@ public:
     // Returns a human-readable display name
     virtual const std::string& getName() const = 0;
 
+    // Optional state persistence for non-float parameters (e.g. file paths)
+    virtual juce::var getState() { return juce::var(); }
+    virtual void setState(const juce::var& state) { juce::ignoreUnused(state); }
+
     // Returns the latency in samples (if any)
     virtual double getLatencySamples() const { return 0.0; }
 
