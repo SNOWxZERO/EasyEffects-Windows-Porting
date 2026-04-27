@@ -2,12 +2,28 @@
 build/
 .cache/
 compile_commands.json
+CMakeFiles/
 
 # Visual Studio files
 .vs/
 *.sln
 *.suo
+*.vcxproj
+*.vcxproj.*
+
+# Build outputs
+*.exe
+*.dll
+*.obj
+*.lib
+
+# Releases directory
+releases/
+
+# Dependencies (except submodules)
+# Do NOT ignore /external/ as we use submodules there
 
 # macOS / Windows OS files
 .DS_Store
 Thumbs.db
+

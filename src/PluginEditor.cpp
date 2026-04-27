@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "ui/ConvolverEditor.h"
 
 // Access JUCE standalone holder for device management
 #if JucePlugin_Build_Standalone
@@ -345,6 +346,9 @@ void EasyEffectsAudioProcessorEditor::rebuildEditorView() {
     if (slot.typeId == "eq") {
         currentEditor = std::make_unique<eeval::ui::VisualEqualizerEditor>(
             audioProcessor, audioProcessor.parameters, slot.slotIndex);
+    } else if (slot.typeId == "convolver") {
+        currentEditor = std::make_unique<eeval::ui::ConvolverEditor>(
+            audioProcessor, slot.slotIndex);
     } else {
         currentEditor = std::make_unique<eeval::ui::GenericModuleEditor>(
             audioProcessor.parameters, slot.slotIndex, slot.typeId, slot.displayName);

@@ -9,8 +9,8 @@ add_subdirectory(external/rnnoise)
 set(SOUNDSTRETCH OFF CACHE BOOL "" FORCE)
 add_subdirectory(external/soundtouch)
 
-# Add JUCE from the parent directory
-add_subdirectory("../JUCE" JUCE)
+# Add JUCE from the submodule directory
+add_subdirectory("external/JUCE" JUCE)
 
 # Add the plugin target
 juce_add_plugin(EasyEffects
@@ -67,6 +67,7 @@ target_sources(EasyEffects
     src/ui/EQNodeSettingsPanel.cpp
     src/ui/DynamicsVisualizer.cpp
     src/ui/VisualEqualizerEditor.cpp
+    src/ui/ConvolverEditor.cpp
     src/ui/GenericModuleEditor.cpp
     src/PresetManager.cpp
 )
