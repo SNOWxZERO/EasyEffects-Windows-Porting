@@ -5,7 +5,7 @@ A native Windows audio effects processor inspired by [EasyEffects](https://githu
 ![EasyEffects Windows Screenshot](screenshots/MainApp.png)
 
 ## Tutorial Video
-https://github.com/SNOWxZERO/EasyEffects-Windows-Porting/raw/master/screenshots/EasyEffects%20Tutorial.mp4
+<video src="screenshots/EasyEffects%20Tutorial.mp4" controls width="600"></video>
 
 ## ⚠️ What this project IS
 A real-time, modular DSP audio processing chain for Windows, built with C++ and JUCE. It provides 25+ professional audio effects, spectrum analysis, and flexible routing.
