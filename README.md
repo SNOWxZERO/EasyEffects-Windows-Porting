@@ -4,12 +4,18 @@ A native Windows audio effects processor inspired by [EasyEffects](https://githu
 
 ![EasyEffects Windows Screenshot](screenshots/MainApp.png)
 
+## Tutorial Video
+[![EasyEffects Windows Tutorial](screenshots/EasyEffects%20Tutorial.mp4)](screenshots/EasyEffects%20Tutorial.mp4)
+
 ## ⚠️ What this project IS
 A real-time, modular DSP audio processing chain for Windows, built with C++ and JUCE. It provides 25+ professional audio effects, spectrum analysis, and flexible routing.
 
 ## ⚠️ What it is NOT
 **This is NOT system-wide by default.** Unlike the Linux version which uses PipeWire to natively hijack all system audio, Windows does not allow this easily. 
 👉 **For system-wide audio processing, you MUST use a Virtual Audio Cable (like VB-Cable).** See the routing guide below.
+
+## 🚧 Current Status: Alpha / Under Development
+**Please note:** This project is currently in the **Alpha** stage and is under active development. While the core architecture and many effects are stable, you may encounter bugs, UI glitches, or unoptimized CPU usage. Some specific audio effects might not yet work perfectly or exactly match their Linux counterparts. We appreciate your patience and bug reports!
 
 ---
 
